@@ -1,0 +1,18 @@
+name: USDA Market Price Sync
+
+on:
+  schedule:
+    - cron: '0 15 * * 1-5'   # Daily 8 AM PT (Mon-Fri) = 15:00 UTC
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Sync USDA market prices
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger market sync function
+        run: |
+          curl -f -s -X POST \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.NETLIFY_URL }}/.netlify/functions/market/sync"
