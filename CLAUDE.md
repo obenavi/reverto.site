@@ -117,6 +117,14 @@ actual DB schema in Supabase before assuming tables/columns exist.
 Used across functions (set in Netlify, not committed): `SUPABASE_URL`, `SUPABASE_KEY`, `JWT_SECRET`,
 `AZURE_DI_ENDPOINT`, `AZURE_DI_KEY`, `CRON_SECRET`, `USDA_API_KEY`.
 
+## AI team
+
+`.claude/agents/` defines specialist personas (ceo, engineer, qa, security, lawyer, marketing,
+creative, product, data, development) for working on this project. `docs/business/` is their
+shared knowledge base — see `docs/business/README.md`. Agents may research and draft within their
+domain autonomously; anything irreversible (spending, legal commitments, public posts, production
+deploys) requires founder approval.
+
 ## Compliance constraints
 
 `docs/LEGAL.md` documents mandatory CCPA/CalOPPA/CIPA/ADA requirements for this product (privacy
