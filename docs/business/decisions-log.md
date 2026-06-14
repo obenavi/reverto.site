@@ -4,6 +4,23 @@ Running log of notable decisions and recommendations made by the AI team. Newest
 
 ---
 
+## 2026-06-14 — GTM plan: concierge-first, don't wait for the product
+`ceo` synthesized a go-to-market plan in `docs/business/go-to-market.md`. Core call: the moat (Sysco
+parser + USDA sync) is already built; the product has zero UI. Do NOT wait for the full 3-tier
+product/billing/legal to start GTM. **Highest-leverage first move: manually deliver ~10 concierge
+"Overpayment Report" PDFs to real Bay Area/LA Sysco operators**, running the existing
+`invoices/parse.js` by hand — no login/dashboard/billing needed. This validates demand, produces
+testimonials with exact $ savings, and seeds the benchmarking dataset (with opt-in consent) in
+parallel with `engineer` building the demoable core loop (backlog steps 0–6, ~6 weeks).
+Data collection starts NOW via consented concierge, NOT a public free tier (public free tier waits
+until Azure DI cost is capped + lawyer sign-off). Milestones: first 10 users = 10 concierge reports
+(wks 1–4, no product); first paying customer likely a concierge user paying manually ~wk 4–8; first
+50 users wks 8–16 after the self-serve loop ships. Biggest risk: founder + AI team build forever and
+never do unscalable outreach → empty product, no users. **Mitigation/recommended rule: no self-serve
+feature work past core-loop step 6 until 10 concierge reports delivered and ≥3 operators say they'd
+pay.** Sysco reps = referral channel only, not a data deal. Any pricing publish / formal partnership
+still needs founder sign-off.
+
 ## 2026-06-14 — Founder's 3-tier pricing proposal reviewed (Free / $49 / $98)
 `ceo` assessed the founder's new proposal: Free (10 invoices/wk + USDA price list + "send orders from
 text/email"), $49 (benchmarking + 15+ invoices/wk), $98 (full food cost tracking + reverto.cloud
