@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log in — Yield</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <p class="center"><a href="/">&larr; Yield</a></p>
+
+    <div class="card">
+      <h2 id="form-title">Log in</h2>
+
+      <form id="login-form">
+        <div class="field">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" required autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn" id="login-submit">Log in</button>
+      </form>
+
+      <form id="signup-form" style="display:none;">
+        <div class="field">
+          <label for="signup-name">Your name</label>
+          <input type="text" id="signup-name" required autocomplete="name">
+        </div>
+        <div class="field">
+          <label for="signup-business">Restaurant / business name</label>
+          <input type="text" id="signup-business" required autocomplete="organization">
+        </div>
+        <div class="field">
+          <label for="signup-email">Email</label>
+          <input type="email" id="signup-email" required autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="signup-password">Password</label>
+          <input type="password" id="signup-password" required minlength="8" autocomplete="new-password">
+          <p class="muted">At least 8 characters.</p>
+        </div>
+        <button type="submit" class="btn" id="signup-submit">Sign up</button>
+      </form>
+
+      <p class="center mt-16">
+        <a href="#" id="toggle-link">Need an account? Sign up</a>
+      </p>
+    </div>
+  </div>
+
+  <script src="/js/db.js"></script>
+  <script>
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    const formTitle = document.getElementById('form-title');
+    const toggleLink = document.getElementById('toggle-link');
+
+    function showSignup(show) {
+      loginForm.style.display = show ? 'none' : '';
+      signupForm.style.display = show ? '' : 'none';
+      formTitle.textContent = show ? 'Sign up' : 'Log in';
+      toggleLink.textContent = show ? 'Already have an account? Log in' : 'Need an account? Sign up';
+    }
+
+    toggleLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      const showingSignup = signupForm.style.display !== 'none';
+      showSignup(!showingSignup);
+    });
+
+    // Allow linking directly to the signup form via /login.html#signup
+    if (window.location.hash === '#signup') showSignup(true);
+
+    function afterAuth(data) {
+      Auth.save(data);
+      window.location.href = '/app.html';
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById('login-submit');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Logging in...';
+
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+
+      try {
+        const res = await apiFetch('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email, password })
+        });
+        if (res && res.ok) {
+          afterAuth(res.data);
+        } else {
+          showToast(res?.data?.error || 'Login failed', 'error');
+        }
+      } catch (err) {
+        showToast('Network error — please try again', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Log in';
+      }
+    });
+
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById('signup-submit');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing up...';
+
+      const name = document.getElementById('signup-name').value.trim();
+      const business_name = document.getElementById('signup-business').value.trim();
+      const email = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
+
+      try {
+        const res = await apiFetch('/auth/signup', {
+          method: 'POST',
+          body: JSON.stringify({ name, business_name, email, password })
+        });
+        if (res && res.ok) {
+          afterAuth(res.data);
+        } else {
+          showToast(res?.data?.error || 'Signup failed', 'error');
+        }
+      } catch (err) {
+        showToast('Network error — please try again', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign up';
+      }
+    });
+  </script>
+</body>
+</html>

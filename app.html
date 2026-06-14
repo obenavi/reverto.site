@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yield</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="appbar">
+    <span class="brand">Yield</span>
+    <span class="user-info">
+      <span id="user-name"></span>
+      <a href="#" id="logout-link">Log out</a>
+    </span>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <h2>Upload an invoice</h2>
+      <p class="muted">Take a photo of a Sysco invoice (or upload a PDF) and we'll parse it
+        automatically.</p>
+
+      <form id="upload-form">
+        <div class="field">
+          <label for="invoice-file">Invoice photo or PDF</label>
+          <input type="file" id="invoice-file" accept="image/*,application/pdf" required>
+        </div>
+        <button type="submit" class="btn" id="upload-submit">Upload &amp; parse</button>
+      </form>
+
+      <div id="status-line" class="status-line" style="display:none;">
+        <span class="spinner"></span>
+        <span id="status-text"></span>
+      </div>
+
+      <div id="result-box" class="result-box" style="display:none;"></div>
+    </div>
+  </div>
+
+  <script src="/js/db.js"></script>
+  <script>
+    Auth.requireAuth();
+
+    document.getElementById('user-name').textContent = Auth.name() || '';
+
+    document.getElementById('logout-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      Auth.clear();
+      window.location.href = '/login.html';
+    });
+
+    const form = document.getElementById('upload-form');
+    const fileInput = document.getElementById('invoice-file');
+    const submitBtn = document.getElementById('upload-submit');
+    const statusLine = document.getElementById('status-line');
+    const statusText = document.getElementById('status-text');
+    const resultBox = document.getElementById('result-box');
+
+    function setStatus(text) {
+      statusLine.style.display = text ? 'flex' : 'none';
+      statusText.textContent = text || '';
+    }
+
+    function showResult(message, isError) {
+      resultBox.style.display = 'block';
+      resultBox.className = 'result-box' + (isError ? ' error' : '');
+      resultBox.textContent = message;
+    }
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          // result is "data:<mime>;base64,<data>" — strip the prefix.
+          const result = reader.result;
+          const comma = result.indexOf(',');
+          resolve(result.slice(comma + 1));
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      resultBox.style.display = 'none';
+      submitBtn.disabled = true;
+
+      try {
+        setStatus('Uploading...');
+        const data = await fileToBase64(file);
+
+        setStatus('Uploading and parsing — this can take up to 30 seconds...');
+        const res = await apiFetch('/invoices/upload', {
+          method: 'POST',
+          body: JSON.stringify({
+            filename: file.name,
+            content_type: file.type || 'application/octet-stream',
+            data
+          })
+        });
+
+        setStatus('');
+
+        if (!res) return; // apiFetch already redirected (401)
+
+        if (res.ok && !res.data.error) {
+          showResult(
+            `Done! Parsed ${res.data.parsed ?? 0} item(s) from vendor: ${res.data.vendor || 'unknown'}.`,
+            false
+          );
+          showToast('Invoice parsed successfully', 'success');
+        } else {
+          showResult(res.data.error || 'Something went wrong while parsing this invoice.', true);
+          showToast('Upload or parsing failed', 'error');
+        }
+      } catch (err) {
+        setStatus('');
+        showResult('Network error — please try again.', true);
+        showToast('Network error', 'error');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

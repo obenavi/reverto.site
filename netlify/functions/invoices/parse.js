@@ -29,18 +29,24 @@ exports.handler = async (event) => {
   try { body = JSON.parse(event.body); }
   catch (_) { return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
-  const { invoice_id, file_url } = body;
-  if (!invoice_id || !file_url) return { statusCode: 400, body: JSON.stringify({ error: 'invoice_id and file_url required' }) };
+  const { invoice_id } = body;
+  if (!invoice_id) return { statusCode: 400, body: JSON.stringify({ error: 'invoice_id required' }) };
 
   const H = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' };
 
-  // Fetch invoice row to verify ownership
-  const invRes = await fetch(`${SUPABASE_URL}/rest/v1/invoices?id=eq.${invoice_id}&business_id=eq.${payload.business_id}&select=id,supplier_id&limit=1`, { headers: H });
+  // Fetch invoice row to verify ownership and get the storage path (never trust a client-supplied file_url)
+  const invRes = await fetch(`${SUPABASE_URL}/rest/v1/invoices?id=eq.${invoice_id}&business_id=eq.${payload.business_id}&select=id,supplier_id,raw_file_url&limit=1`, { headers: H });
   const invRows = invRes.ok ? await invRes.json() : [];
   if (!invRows.length) return { statusCode: 404, body: JSON.stringify({ error: 'Invoice not found' }) };
 
+  const rawFileUrl = invRows[0].raw_file_url;
+  if (!rawFileUrl || !rawFileUrl.startsWith(`${payload.business_id}/`)) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Invoice has no associated file' }) };
+  }
+  const fileUrl = `${SUPABASE_URL}/storage/v1/object/invoices/${rawFileUrl}`;
+
   // Download file from Supabase Storage
-  const fileRes = await fetch(file_url, { headers: { 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+  const fileRes = await fetch(fileUrl, { headers: { 'Authorization': 'Bearer ' + SUPABASE_KEY } });
   if (!fileRes.ok) return { statusCode: 500, body: JSON.stringify({ error: 'Cannot fetch file' }) };
   const fileBuffer = await fileRes.arrayBuffer();
 

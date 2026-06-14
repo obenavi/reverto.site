@@ -154,7 +154,9 @@ until after first real-user feedback.
 - [x] Sysco invoice parser (core logic)
 - [x] USDA market price sync
 - [ ] Supabase schema confirmed/created (step 0)
-- [ ] Invoice upload endpoint + page (step 1)
+- [x] Invoice upload endpoint + page (step 1) — built `index.html`, `login.html` (login+signup
+  toggle), `app.html`, `netlify/functions/invoices/upload.js`, `css/style.css`. Schema/bucket not
+  verified live — see open questions below.
 - [ ] Invoice results/list page (steps 2, 9)
 - [ ] USDA comparison on invoice view (step 3)
 - [ ] Daily Z report entry (step 4)
