@@ -4,6 +4,22 @@ Running log of notable decisions and recommendations made by the AI team. Newest
 
 ---
 
+## 2026-06-14 — Founder's 3-tier pricing proposal reviewed (Free / $49 / $98)
+`ceo` assessed the founder's new proposal: Free (10 invoices/wk + USDA price list + "send orders from
+text/email"), $49 (benchmarking + 15+ invoices/wk), $98 (full food cost tracking + reverto.cloud
+features localized to US English). Verdict: keep the three-tier shape and the free-USDA hook (good
+instincts, benchmarking-as-upsell mirrors Orderly's ~$195 feature). Four risks flagged: (1) free tier
+too generous and inverts the value ladder — 43 OCR invoices/mo free beats MarketMan's *paid* tier;
+recommend gating benchmarking + high-volume OCR behind paid; (2) **uncapped Azure DI OCR cost — founder
+must verify actual per-invoice Azure Document Intelligence pricing and set a hard free-tier OCR cap
+before launch** (DO NOT ship free-unlimited OCR); (3) switch weekly caps to monthly; (4) $98 tier
+depends on undefined reverto.cloud scope — treat as placeholder. **"Send orders from text/email"
+flagged as a NEW, unscoped product concept** (not in PLAN.md/ARCHITECTURE.md) — implies catalog/order
+builder + SMS/email pipeline (new vendor cost, CAN-SPAM/TCPA compliance); needs its own spec/estimate
+before being promised. Data-acquisition-via-free-tier judged sound but requires opt-in + lawyer review
+for any cross-customer use. Full assessment + open questions in `business-model.md`. **Pricing change =
+founder sign-off; do not publish until cost/cap/scope questions resolved.**
+
 ## 2026-06-14 — Competitive landscape re-verified; pricing figures refreshed
 `ceo` re-ran web research on MarginEdge, Ottimate (Plate IQ), xtraCHEF, MarketMan, Apicbase,
 CrunchTime/R365, and Orderly to verify and sharpen the existing `competitors.md`. Confirmed and
