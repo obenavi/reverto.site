@@ -4,6 +4,25 @@ Running log of notable decisions and recommendations made by the AI team. Newest
 
 ---
 
+## 2026-06-14 — Competitive landscape re-verified; pricing figures refreshed
+`ceo` re-ran web research on MarginEdge, Ottimate (Plate IQ), xtraCHEF, MarketMan, Apicbase,
+CrunchTime/R365, and Orderly to verify and sharpen the existing `competitors.md`. Confirmed and
+refined figures: MarginEdge $350/mo/location (10% off annual, +$50/mo Toast API fee); xtraCHEF tiers
+Core $149 / Chef's Choice $199–299 / Pro $349 (recipe costing only at Pro; OCR self-reported ~90–95%);
+MarketMan $199/$249/custom + **$500 setup fee**, OCR capped at 50 scans/mo on Starter; Ottimate from
+~$200; Orderly from ~$195 with its Restaurant Food Index peer benchmark running on ~18k line items/day.
+Updated `competitors.md` summary table, per-competitor notes, "where Yield can win," and sources.
+
+Reaffirmed Yield's three wedges: (1) Sysco-specific obfuscation-defeating parser as a *named*
+capability, (2) neutral USDA benchmark (free to source, no data-scale flywheel needed — unlike
+Orderly), (3) cheapest credible price with no setup fee + fastest time-to-insight. Orderly remains the
+closest threat on the market-price angle.
+
+Added two business-model ideas to `business-model.md` (now items 4–5): (4) hold one $49 tier for
+launch vs. a future ~$19–29 Lite tier — recommend holding, revisit only if conversion data shows price
+is the blocker (**pricing change = founder sign-off**); (5) use Sysco reps as a co-branded referral
+*marketing* channel, explicitly NOT a data-sharing deal (would invert Yield's positioning + CCPA risk).
+
 ## 2026-06-14 — Phase 1 build sequence: smallest end-to-end slice first
 `product` reviewed current state (auth + Sysco parser + USDA sync built, but zero HTML/CSS — nothing
 usable in a browser) and proposed a concrete ordered build sequence in
