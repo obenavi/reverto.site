@@ -41,3 +41,23 @@
   from = "/onboarding"
   to = "/onboarding.html"
   status = 200
+
+[[redirects]]
+  from = "/invoice"
+  to = "/invoice.html"
+  status = 200
+
+[[redirects]]
+  from = "/invoices/list"
+  to = "/.netlify/functions/invoices/list"
+  status = 200
+
+[[redirects]]
+  from = "/invoices/upload"
+  to = "/.netlify/functions/invoices/upload"
+  status = 200
+
+[[redirects]]
+  from = "/invoices/parse"
+  to = "/.netlify/functions/invoices/parse"
+  status = 200

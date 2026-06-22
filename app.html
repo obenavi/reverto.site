@@ -62,10 +62,24 @@
       statusText.textContent = text || '';
     }
 
-    function showResult(message, isError) {
+    function showResult(message, isError, invoiceId) {
       resultBox.style.display = 'block';
       resultBox.className = 'result-box' + (isError ? ' error' : '');
-      resultBox.textContent = message;
+      if (!isError && invoiceId) {
+        resultBox.innerHTML = '';
+        const msg = document.createElement('div');
+        msg.textContent = message;
+        resultBox.appendChild(msg);
+        const link = document.createElement('a');
+        link.href = '/invoice.html?id=' + encodeURIComponent(invoiceId);
+        link.textContent = 'View Results →';
+        link.style.display = 'inline-block';
+        link.style.marginTop = '10px';
+        link.style.fontWeight = '600';
+        resultBox.appendChild(link);
+      } else {
+        resultBox.textContent = message;
+      }
     }
 
     function fileToBase64(file) {
@@ -111,7 +125,8 @@
         if (res.ok && !res.data.error) {
           showResult(
             `Done! Parsed ${res.data.parsed ?? 0} item(s) from vendor: ${res.data.vendor || 'unknown'}.`,
-            false
+            false,
+            res.data.invoice_id
           );
           showToast('Invoice parsed successfully', 'success');
         } else {
