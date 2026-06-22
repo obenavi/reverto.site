@@ -103,6 +103,7 @@ exports.handler = async (event) => {
     headers: H,
     body: JSON.stringify({
       status: 'verified',
+      vendor_name: vendorName || null,
       invoice_number: doc.InvoiceId?.content || null,
       invoice_date: doc.InvoiceDate?.valueDate || null,
       total_amount: doc.InvoiceTotal?.valueCurrency?.amount || null,

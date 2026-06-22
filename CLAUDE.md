@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-This is **Yield** (repo: reverto.site) — a cost-control SaaS for US independent restaurants. It parses
+This is **Reverto** (repo: reverto.site) — a cost-control SaaS for US independent restaurants. It parses
 distributor invoices (Sysco first), computes true cost per lb/oz/unit, compares against USDA market
 prices, and tracks food cost % against daily sales.
 
