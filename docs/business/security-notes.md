@@ -56,3 +56,21 @@ cleanup job given CCPA data-minimization (`docs/LEGAL.md`).
 
 Action items: fix parse.js file_url trust issue (high), tighten `ext` whitelist (low), add explicit
 upload size cap (low/medium - cost control).
+
+### 2026-06-22 — invoices/list.js + invoice.html (new list/detail endpoint)
+
+Reviewed: `netlify/functions/invoices/list.js`, `invoice.html`, `app.html`, `netlify.toml`.
+
+**Low — invoice_items query not scoped by business_id**
+`list.js:41` fetches `invoice_items` filtered only by `invoice_id`, with no `business_id` constraint.
+The invoice ownership check on line 32-37 gates access correctly (uses `business_id` from JWT), so
+a foreign `invoice_id` will 404 before the items query runs. Risk is currently low because invoice
+UUIDs are non-guessable. However, if `invoice_id` were ever sequential, or if a business_id check
+were accidentally removed upstream, items could leak cross-tenant. Recommend adding
+`&business_id=eq.${payload.business_id}` to the items query (requires `business_id` column on
+`invoice_items`) to eliminate the dependency on UUID non-guessability.
+
+**Verified clean:**
+- `verifyJwt` in list.js is byte-for-byte identical to parse.js canonical pattern.
+- Invoice query at list.js:33 uses `business_id=eq.${payload.business_id}` from JWT, not client input.
+- No client-supplied `business_id` accepted anywhere.

@@ -30,7 +30,7 @@ exports.handler = async (event) => {
 
   // Fetch invoice row, scoped by business_id from JWT (never trust client)
   const invRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/invoices?id=eq.${invoice_id}&business_id=eq.${payload.business_id}&select=id,invoice_number,invoice_date,total_amount,status,parsed_at,created_at&limit=1`,
+    `${SUPABASE_URL}/rest/v1/invoices?id=eq.${invoice_id}&business_id=eq.${payload.business_id}&select=id,vendor_name,invoice_number,invoice_date,total_amount,status,parsed_at,created_at&limit=1`,
     { headers: H }
   );
   const invRows = invRes.ok ? await invRes.json() : [];

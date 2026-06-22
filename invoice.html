@@ -360,11 +360,11 @@
         return;
       }
 
-      const { invoice, items } = res.data;
+      const { invoice } = res.data;
+      const items = res.data.items ?? [];
 
       // Header fields
-      // invoice_number may contain the vendor prefix; use it as vendor fallback
-      document.getElementById('inv-vendor').textContent = invoice.invoice_number ? 'Sysco' : 'Unknown vendor';
+      document.getElementById('inv-vendor').textContent = invoice.vendor_name || 'Unknown vendor';
       document.getElementById('inv-number').textContent = invoice.invoice_number || '—';
       document.getElementById('inv-date').textContent = formatDate(invoice.invoice_date);
       document.getElementById('inv-total').textContent = invoice.total_amount != null ? formatUSD(invoice.total_amount) : '—';
