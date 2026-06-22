@@ -1,4 +1,5 @@
 // Invoice list/detail: returns invoice header + line items for a given invoice_id
+// Reverto — extends items with USDA market price comparisons
 const crypto = require('crypto');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -15,6 +16,46 @@ function verifyJwt(authHeader) {
   const payload = JSON.parse(Buffer.from(b, 'base64url').toString());
   if (payload.exp < Date.now() / 1000) return null;
   return payload;
+}
+
+// Maps lowercased description substrings to USDA commodity keys.
+// Checked in order — first match wins.
+const COMMODITY_MAP = [
+  { keywords: ['chicken breast'],    commodity: 'CHICKEN BREAST' },
+  { keywords: ['chicken'],           commodity: 'CHICKEN BREAST' },
+  { keywords: ['beef tenderloin', 'filet'], commodity: 'BEEF TENDERLOIN' },
+  { keywords: ['ground beef', 'beef ground', 'chuck'], commodity: 'GROUND BEEF' },
+  { keywords: ['atlantic salmon', 'salmon'], commodity: 'SALMON' },
+  { keywords: ['shrimp'],            commodity: 'SHRIMP' },
+  { keywords: ['tomato'],            commodity: 'TOMATOES' },
+  { keywords: ['romaine', 'lettuce'], commodity: 'LETTUCE ROMAINE' },
+  { keywords: ['onion'],             commodity: 'ONIONS' },
+  { keywords: ['potato'],            commodity: 'POTATOES' },
+  { keywords: ['avocado'],           commodity: 'AVOCADOS' },
+  { keywords: ['apple'],             commodity: 'APPLES' },
+  { keywords: ['cheese mozzarella', 'mozzarella'], commodity: 'MOZZARELLA' },
+  { keywords: ['cheese cheddar', 'cheddar'], commodity: 'CHEDDAR CHEESE' },
+  { keywords: ['butter'],            commodity: 'BUTTER' },
+  { keywords: ['eggs', 'egg'],       commodity: 'EGGS' },
+];
+
+function matchCommodity(description) {
+  const lower = (description || '').toLowerCase();
+  for (const entry of COMMODITY_MAP) {
+    for (const kw of entry.keywords) {
+      if (lower.includes(kw)) return entry.commodity;
+    }
+  }
+  return null;
+}
+
+async function fetchUsdaPrice(H, commodity) {
+  const encoded = encodeURIComponent(commodity);
+  const url = `${SUPABASE_URL}/rest/v1/usda_prices?commodity=eq.${encoded}&select=commodity,price_avg,price_low,price_high,report_date&order=report_date.desc&limit=1`;
+  const res = await fetch(url, { headers: H });
+  if (!res.ok) return null;
+  const rows = await res.json();
+  return rows.length ? rows[0] : null;
 }
 
 exports.handler = async (event) => {
@@ -43,9 +84,49 @@ exports.handler = async (event) => {
   );
   const items = itemsRes.ok ? await itemsRes.json() : [];
 
+  // Look up USDA prices in parallel for all items that match a known commodity.
+  // usda_prices is global market data — no business_id filter needed.
+  const commodityCache = new Map(); // avoid duplicate fetches for same commodity
+  const usdaLookups = items.map(item => {
+    const commodity = matchCommodity(item.description);
+    if (!commodity) return Promise.resolve(null);
+    if (!commodityCache.has(commodity)) {
+      commodityCache.set(commodity, fetchUsdaPrice(H, commodity));
+    }
+    return commodityCache.get(commodity);
+  });
+
+  const usdaResults = await Promise.all(usdaLookups);
+
+  const itemsWithUsda = items.map((item, i) => {
+    const usda = usdaResults[i];
+    if (!usda) {
+      return {
+        ...item,
+        usda_price_avg: null,
+        usda_price_low: null,
+        usda_price_high: null,
+        usda_report_date: null,
+        variance_pct: null,
+      };
+    }
+    let variance_pct = null;
+    if (item.cost_per_lb != null && usda.price_avg != null && usda.price_avg !== 0) {
+      variance_pct = Math.round(((item.cost_per_lb - usda.price_avg) / usda.price_avg) * 100 * 10) / 10;
+    }
+    return {
+      ...item,
+      usda_price_avg: usda.price_avg,
+      usda_price_low: usda.price_low,
+      usda_price_high: usda.price_high,
+      usda_report_date: usda.report_date,
+      variance_pct,
+    };
+  });
+
   return {
     statusCode: 200,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ invoice: invRows[0], items })
+    body: JSON.stringify({ invoice: invRows[0], items: itemsWithUsda })
   };
 };

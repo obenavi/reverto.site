@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Invoice — Yield</title>
+  <title>Invoice — Reverto</title>
   <link rel="stylesheet" href="/css/style.css">
   <style>
     .container-wide {
@@ -192,11 +192,40 @@
     }
 
     .back-link:hover { text-decoration: underline; }
+
+    /* USDA market comparison columns */
+    .variance-over  { color: #ef4444; font-weight: 600; }
+    .variance-under { color: #22c55e; font-weight: 600; }
+
+    .usda-legend {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: var(--color-muted);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .usda-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .stat-value-alert { color: #ef4444; font-weight: 700; }
+    .stat-value-ok    { color: #22c55e; font-weight: 700; }
   </style>
 </head>
 <body>
   <div class="appbar">
-    <span class="brand">Yield</span>
+    <span class="brand">Reverto</span>
     <span class="user-info">
       <span id="user-name"></span>
       <a href="#" id="logout-link">Log out</a>
@@ -258,10 +287,14 @@
           <span class="label">Parsed at</span>
           <span class="value" id="stat-parsed">—</span>
         </div>
+        <div class="summary-stat">
+          <span class="label">Overpaying on</span>
+          <span class="value" id="stat-overpaying">—</span>
+        </div>
       </div>
 
       <div class="items-table-wrap">
-        <table>
+        <table id="items-table">
           <thead>
             <tr>
               <th>Description</th>
@@ -270,11 +303,24 @@
               <th class="num">Unit Price</th>
               <th class="num">Extended</th>
               <th class="num">Cost/lb</th>
+              <th class="num">USDA/lb</th>
+              <th class="num">vs. Market</th>
             </tr>
           </thead>
           <tbody id="items-body">
           </tbody>
         </table>
+      </div>
+
+      <div class="usda-legend">
+        <div class="usda-legend-item">
+          <span class="legend-dot" style="background:#ef4444;"></span>
+          Overpaying vs. USDA market price
+        </div>
+        <div class="usda-legend-item">
+          <span class="legend-dot" style="background:#22c55e;"></span>
+          At or below market price
+        </div>
       </div>
 
     </div>
@@ -304,10 +350,17 @@
       else badge.className = 'badge badge-error';
     }
 
+    function renderVariance(variance_pct) {
+      if (variance_pct == null) return '<span class="dash">—</span>';
+      const sign = variance_pct > 0 ? '+' : '';
+      const cls = variance_pct > 0 ? 'variance-over' : 'variance-under';
+      return `<span class="${cls}">${sign}${variance_pct}%</span>`;
+    }
+
     function renderItems(items) {
       const tbody = document.getElementById('items-body');
       if (!items.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="center muted" style="padding:24px;">No line items found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="center muted" style="padding:24px;">No line items found.</td></tr>';
         return;
       }
       tbody.innerHTML = items.map(item => {
@@ -317,8 +370,15 @@
         const unitPrice = item.unit_price != null ? formatUSD(item.unit_price) : '—';
         const extended = item.extended_price != null ? formatUSD(item.extended_price) : '—';
         const costPerLb = item.cost_per_lb != null ? formatUSD(item.cost_per_lb) : '<span class="dash">—</span>';
+        const usdaAvg = item.usda_price_avg != null ? formatUSD(item.usda_price_avg) : '<span class="dash">—</span>';
+        const variance = renderVariance(item.variance_pct);
 
-        return `<tr>
+        // Highlight row if materially overpaying (variance > 5%)
+        const rowStyle = item.variance_pct != null && item.variance_pct > 5
+          ? ' style="background:#fef2f2;"'
+          : (item.variance_pct != null && item.variance_pct <= 0 ? ' style="background:#f0fdf4;"' : '');
+
+        return `<tr${rowStyle}>
           <td>
             <div class="desc-cell">
               <span class="cat-dot ${catClass(item.category)}"></span>
@@ -330,6 +390,8 @@
           <td class="num">${unitPrice}</td>
           <td class="num">${extended}</td>
           <td class="num">${costPerLb}</td>
+          <td class="num">${usdaAvg}</td>
+          <td class="num">${variance}</td>
         </tr>`;
       }).join('');
     }
@@ -374,6 +436,17 @@
       document.getElementById('stat-items').textContent = items.length;
       document.getElementById('stat-total').textContent = invoice.total_amount != null ? formatUSD(invoice.total_amount) : '—';
       document.getElementById('stat-parsed').textContent = invoice.parsed_at ? formatDate(invoice.parsed_at) : '—';
+
+      // Overpaying stat: items where variance_pct > 5 (materially above USDA market)
+      const overpayingCount = items.filter(it => it.variance_pct != null && it.variance_pct > 5).length;
+      const overpayingEl = document.getElementById('stat-overpaying');
+      if (overpayingCount > 0) {
+        overpayingEl.textContent = overpayingCount + (overpayingCount === 1 ? ' item' : ' items');
+        overpayingEl.className = 'value stat-value-alert';
+      } else {
+        overpayingEl.textContent = 'None';
+        overpayingEl.className = 'value stat-value-ok';
+      }
 
       renderItems(items);
 
