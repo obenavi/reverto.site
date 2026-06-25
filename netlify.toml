@@ -48,6 +48,16 @@
   status = 200
 
 [[redirects]]
+  from = "/auth/login"
+  to = "/.netlify/functions/auth/login"
+  status = 200
+
+[[redirects]]
+  from = "/auth/signup"
+  to = "/.netlify/functions/auth/signup"
+  status = 200
+
+[[redirects]]
   from = "/invoices/list"
   to = "/.netlify/functions/invoices/list"
   status = 200
