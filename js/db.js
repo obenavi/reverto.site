@@ -1,6 +1,6 @@
 // Core auth, API, and utility helpers
 
-const API = '/.netlify/functions';
+const API = '';
 
 // ── Storage (sessionStorage primary, localStorage fallback) ──────────────────
 function _store(key, val) {
