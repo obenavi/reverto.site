@@ -1,7 +1,7 @@
 [build]
   publish = "."
   functions = "netlify/functions"
-  command = "npm install --prefix netlify/functions/auth && npm install --prefix netlify/functions/market/sync"
+  command = "npm install --prefix netlify/functions && npm install --prefix netlify/functions/market/sync"
 
 [[headers]]
   for = "/*.html"
@@ -49,12 +49,12 @@
 
 [[redirects]]
   from = "/auth/login"
-  to = "/.netlify/functions/auth/login"
+  to = "/.netlify/functions/auth-login"
   status = 200
 
 [[redirects]]
   from = "/auth/signup"
-  to = "/.netlify/functions/auth/signup"
+  to = "/.netlify/functions/auth-signup"
   status = 200
 
 [[redirects]]
