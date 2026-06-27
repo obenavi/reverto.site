@@ -13,7 +13,14 @@ function makeJwt(payload) {
 }
 
 exports.handler = async (event) => {
+ try {
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
+
+  if (!SUPABASE_URL || !SUPABASE_KEY || !JWT_SECRET) {
+    return { statusCode: 500, body: JSON.stringify({ error: 'Server misconfigured: missing ' +
+      [['SUPABASE_URL', SUPABASE_URL], ['SUPABASE_KEY', SUPABASE_KEY], ['JWT_SECRET', JWT_SECRET]]
+        .filter(([, v]) => !v).map(([k]) => k).join(', ') }) };
+  }
 
   let body;
   try { body = JSON.parse(event.body); }
@@ -47,7 +54,7 @@ exports.handler = async (event) => {
     headers: H,
     body: JSON.stringify({ name: business_name, plan: 'free' })
   });
-  if (!bizRes.ok) return { statusCode: 500, body: JSON.stringify({ error: 'Failed to create business' }) };
+  if (!bizRes.ok) return { statusCode: 500, body: JSON.stringify({ error: 'Failed to create business', detail: await bizRes.text() }) };
   const [biz] = await bizRes.json();
 
   // Create user
@@ -56,7 +63,7 @@ exports.handler = async (event) => {
     headers: H,
     body: JSON.stringify({ email: email.toLowerCase(), password_hash: passwordHash, name, business_id: biz.id, role: 'owner' })
   });
-  if (!userRes.ok) return { statusCode: 500, body: JSON.stringify({ error: 'Failed to create user' }) };
+  if (!userRes.ok) return { statusCode: 500, body: JSON.stringify({ error: 'Failed to create user', detail: await userRes.text() }) };
   const [user] = await userRes.json();
 
   // Update business owner_id
@@ -72,4 +79,7 @@ exports.handler = async (event) => {
     statusCode: 201,
     body: JSON.stringify({ token, user_id: user.id, business_id: biz.id, role: 'owner', name, plan: 'free' })
   };
+ } catch (err) {
+  return { statusCode: 500, body: JSON.stringify({ error: 'Signup crashed: ' + (err && err.message), stack: err && err.stack }) };
+ }
 };
