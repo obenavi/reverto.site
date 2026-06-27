@@ -1,7 +1,7 @@
 [build]
   publish = "."
   functions = "netlify/functions"
-  command = "npm install --prefix netlify/functions && npm install --prefix netlify/functions/market/sync"
+  command = "npm install && npm install --prefix netlify/functions/market/sync"
 
 [[headers]]
   for = "/*.html"
