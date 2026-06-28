@@ -151,3 +151,54 @@ Applied fixes after the full audit:
 - netlify.toml: added Content-Security-Policy + Strict-Transport-Security.
 
 Still open (harden later, not blocking): no rate limiting on login/signup; 7-day JWT with no server-side revocation; consider marking Netlify secrets is_secret=true; add business_id filter to invoice_items query once column exists; professional pentest before Stripe.
+
+### 2026-06-28 — data/export.js + data/delete.js (CCPA data-rights endpoints, NEW)
+
+Branch `claude/elegant-albattani-l650n4` (auto-deploys to prod). High blast radius: export returns
+all tenant data, delete destroys it.
+
+**Solid / verified:**
+- Multi-tenant scoping is correct. `business_id` comes only from the verified JWT (`payload.business_id`),
+  never client input. JWT is server-issued from the DB at login/signup. Every query/delete filters by
+  `business_id=eq.${biz}` (or `id=eq.${biz}` for the business row). `business_id` is a UUID, so the
+  unquoted PostgREST filter values are not injectable.
+- `verifyJwt` in both files is byte-identical to the hardened `invoices/list.js` version
+  (alg=HS256 assertion, timing-safe compare, exp check, try/catch).
+- export uses an explicit user column list — `password_hash` is NOT exported. Other tables use
+  `select=*` but contain no secrets.
+- export's `invoice_items` `in.()` list is built from invoice ids that were themselves
+  business_id-scoped, and values are `encodeURIComponent`-escaped — cannot widen scope.
+- delete requires `body.confirm === 'DELETE'`; UI also gates with a typed confirmation.
+- Generic client errors; raw Supabase bodies never returned; details only to console.error.
+- Token-in-header only (no cookie auth path) — CSRF risk low.
+- netlify.toml: /data/export and /data/delete routes precede page routes; no /data page to shadow.
+
+**High — delete will likely FAIL on the final step due to audit_log FK (data left half-deleted):**
+delete.js:78-94 writes an `audit_log` row referencing `business_id`, then delete.js:108 deletes the
+businesses row. Per docs/ARCHITECTURE.md the schema is `audit_log.business_id UUID REFERENCES
+businesses(id)` (and `subscriptions.business_id ... REFERENCES businesses(id)`). Unless those FKs are
+ON DELETE CASCADE/SET NULL in the LIVE schema, the `del('businesses?id=eq.${biz}')` will throw a FK
+violation AFTER users/invoices/sales/etc. are already deleted — leaving an orphaned business +
+subscription and a half-deleted, unusable account, while returning 500. The code comment ("audit_log
+has no FK in the live schema") contradicts the documented schema and MUST be verified against the
+live DB before this ships. Fix: confirm live FK rules; if FKs exist, either delete audit_log/
+subscriptions rows for this business first (or last, before businesses) or rely on verified cascade.
+
+**Medium — orphaned tenant tables not deleted:** delete.js does not delete `item_master`,
+`subscriptions`, `push_subscriptions` (all tenant-scoped). CCPA "right to delete" should remove these
+too; orphaned subscription rows also block the businesses delete (see above). export.js likewise omits
+`item_master` for the "right to know" payload.
+
+**Medium — no transactional atomicity:** the 6 sequential DELETEs (delete.js:103-108) are independent
+REST calls. Any mid-sequence failure leaves a partial state with no rollback. Acceptable for MVP but
+prefer a single Postgres RPC/function that deletes within one transaction. Document the risk.
+
+**Low — storage deletion depends on raw_file_url integrity:** delete.js:63-76 deletes only the
+`raw_file_url` paths recorded on invoice rows (each begins with `{business_id}/`). Files in the bucket
+not referenced by a row (orphaned uploads, partial uploads) are not cleaned up. Not a cross-tenant
+issue (it only ever touches this tenant's recorded paths), but note residual-data risk for CCPA.
+
+**Low — delete relies on a still-valid 7-day token only (no re-auth):** acceptable for MVP given the
+typed-DELETE confirmation, but a stolen/leaked token can wipe an account. Reconfirm before Stripe.
+
+Not a substitute for a professional pentest before handling payment data.
