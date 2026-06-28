@@ -267,7 +267,7 @@
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
-    padding: 0 26px;
+    padding: 0 10px;
     background: rgba(255,255,255,0.85);
     backdrop-filter: saturate(160%) blur(16px);
     -webkit-backdrop-filter: saturate(160%) blur(16px);
@@ -431,16 +431,26 @@
 
   <!-- ===== BOTTOM NAV ===== -->
   <nav class="bottomnav" aria-label="Primary">
-    <a href="#" class="nav-tab">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M3 9l1-4h16l1 4"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/><path d="M3 9h18"/></svg>
-      <span class="lab">Suppliers Market</span>
+    <a href="#" class="nav-tab" aria-current="page">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M3 13a9 9 0 0118 0"/><path d="M12 13l4-3"/><circle cx="12" cy="13" r="1.4" fill="currentColor"/></svg>
+      <span class="lab">Dashboard</span>
     </a>
 
-    <a href="#" class="nav-center" aria-current="page" aria-label="Dashboard">
+    <a href="#" class="nav-tab">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/></svg>
+      <span class="lab">Market</span>
+    </a>
+
+    <a href="#" class="nav-center" aria-label="Scan invoice">
       <span class="orb">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 13a9 9 0 0118 0"/><path d="M12 13l4-3"/><circle cx="12" cy="13" r="1.4" fill="currentColor"/></svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8a2 2 0 012-2h2l1.5-2h7L18 6h2a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/><circle cx="12" cy="12.5" r="3.2"/></svg>
       </span>
-      <span class="lab">Dashboard</span>
+      <span class="lab">Scan</span>
+    </a>
+
+    <a href="#" class="nav-tab">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M3 6h11v9H3z"/><path d="M14 9h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/></svg>
+      <span class="lab">Vendors</span>
     </a>
 
     <a href="#" class="nav-tab">
