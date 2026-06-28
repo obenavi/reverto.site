@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account — Reverto</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .danger-zone {
+      border-color: #fecaca;
+      background: #fff7f7;
+    }
+    .danger-zone h3 { color: var(--color-error); margin-top: 0; }
+    .btn-danger {
+      background: var(--color-error);
+      color: #fff;
+    }
+    .btn-danger:hover { opacity: 0.9; box-shadow: 0 4px 14px rgba(185,28,28,0.25); }
+    #delete-confirm { display: none; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="appbar">
+    <a class="brand" href="/app.html" style="text-decoration:none;">Reverto</a>
+    <span class="user-info">
+      <span id="user-name"></span>
+      <a href="#" id="logout-link">Log out</a>
+    </span>
+  </div>
+
+  <nav class="appnav">
+    <a href="/app.html">Upload</a>
+    <a href="/invoices.html">Invoices</a>
+    <a href="/sales.html">Sales</a>
+    <a href="/dashboard.html">Dashboard</a>
+    <a href="/account.html" class="active">Account</a>
+  </nav>
+
+  <div class="container">
+    <div class="card">
+      <h2>Your data</h2>
+      <p class="muted">Download a copy of all the data Reverto holds about your
+        business — your account, invoices, parsed line items, sales, locations,
+        and suppliers — as a JSON file.</p>
+      <button class="btn" id="export-btn">Download my data</button>
+    </div>
+
+    <div class="card danger-zone">
+      <h3>Delete my account &amp; data</h3>
+      <p class="muted">This permanently deletes your account and <strong>all</strong>
+        of your business's data — invoices, uploaded files, parsed items, sales,
+        locations, and suppliers. This cannot be undone.</p>
+      <button class="btn btn-danger" id="delete-btn">Delete my account &amp; data</button>
+
+      <div id="delete-confirm">
+        <div class="field">
+          <label for="delete-input">Type <strong>DELETE</strong> to confirm</label>
+          <input type="text" id="delete-input" autocomplete="off" placeholder="DELETE">
+        </div>
+        <button class="btn btn-danger" id="delete-confirm-btn">Permanently delete everything</button>
+        <button class="btn btn-secondary mt-16" id="delete-cancel-btn">Cancel</button>
+      </div>
+    </div>
+
+    <p class="muted center mt-16">
+      See our <a href="/privacy.html">Privacy Policy</a> for how we handle your data.
+    </p>
+  </div>
+
+  <footer class="site-footer">
+    <a href="/privacy.html">Privacy</a>
+    <span aria-hidden="true">·</span>
+    <a href="/terms.html">Terms</a>
+  </footer>
+
+  <script src="/js/db.js?v=2"></script>
+  <script>
+    if (!Auth.requireAuth()) throw new Error('redirect');
+
+    document.getElementById('user-name').textContent = Auth.name() || '';
+    document.getElementById('logout-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      Auth.clear();
+      window.location.href = '/login.html';
+    });
+
+    // ── Export ──────────────────────────────────────────────────────────────
+    const exportBtn = document.getElementById('export-btn');
+    exportBtn.addEventListener('click', async () => {
+      exportBtn.disabled = true;
+      exportBtn.textContent = 'Preparing...';
+      try {
+        const res = await fetch('/data/export', {
+          headers: { 'Authorization': 'Bearer ' + Auth.token() }
+        });
+        if (res.status === 401) { Auth.clear(); window.location.href = '/login.html'; return; }
+        if (!res.ok) { showToast('Could not export your data', 'error'); return; }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'reverto-data-export.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast('Download started', 'success');
+      } catch (err) {
+        showToast('Network error — please try again', 'error');
+      } finally {
+        exportBtn.disabled = false;
+        exportBtn.textContent = 'Download my data';
+      }
+    });
+
+    // ── Delete ──────────────────────────────────────────────────────────────
+    const deleteBtn = document.getElementById('delete-btn');
+    const deleteConfirm = document.getElementById('delete-confirm');
+    const deleteInput = document.getElementById('delete-input');
+    const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+    const deleteCancelBtn = document.getElementById('delete-cancel-btn');
+
+    deleteBtn.addEventListener('click', () => {
+      deleteBtn.style.display = 'none';
+      deleteConfirm.style.display = 'block';
+      deleteInput.focus();
+    });
+
+    deleteCancelBtn.addEventListener('click', () => {
+      deleteConfirm.style.display = 'none';
+      deleteBtn.style.display = '';
+      deleteInput.value = '';
+    });
+
+    deleteConfirmBtn.addEventListener('click', async () => {
+      if (deleteInput.value.trim() !== 'DELETE') {
+        showToast('Type DELETE to confirm', 'error');
+        return;
+      }
+      deleteConfirmBtn.disabled = true;
+      deleteConfirmBtn.textContent = 'Deleting...';
+      try {
+        const res = await fetch('/data/delete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + Auth.token()
+          },
+          body: JSON.stringify({ confirm: 'DELETE' })
+        });
+        if (res.status === 401) { Auth.clear(); window.location.href = '/login.html'; return; }
+        let data = {};
+        try { data = await res.json(); } catch (_) {}
+        if (res.ok && data.deleted) {
+          Auth.clear();
+          try { showToast('Your account and data have been deleted. Goodbye.', 'success'); } catch (_) {}
+          setTimeout(() => { window.location.href = '/index.html'; }, 1200);
+        } else {
+          showToast((data && data.error) || 'Could not delete your account', 'error');
+          deleteConfirmBtn.disabled = false;
+          deleteConfirmBtn.textContent = 'Permanently delete everything';
+        }
+      } catch (err) {
+        showToast('Network error — please try again', 'error');
+        deleteConfirmBtn.disabled = false;
+        deleteConfirmBtn.textContent = 'Permanently delete everything';
+      }
+    });
+  </script>
+</body>
+</html>

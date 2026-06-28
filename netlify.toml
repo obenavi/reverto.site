@@ -100,3 +100,31 @@
   from = "/dashboard"
   to = "/dashboard.html"
   status = 200
+
+# CCPA data-rights function routes. Kept before any page route so they are not
+# shadowed (Netlify matches top-down). There is no /data page route.
+[[redirects]]
+  from = "/data/export"
+  to = "/.netlify/functions/data/export"
+  status = 200
+
+[[redirects]]
+  from = "/data/delete"
+  to = "/.netlify/functions/data/delete"
+  status = 200
+
+# Public legal pages + the authenticated account page.
+[[redirects]]
+  from = "/privacy"
+  to = "/privacy.html"
+  status = 200
+
+[[redirects]]
+  from = "/terms"
+  to = "/terms.html"
+  status = 200
+
+[[redirects]]
+  from = "/account"
+  to = "/account.html"
+  status = 200
