@@ -74,6 +74,13 @@
   to = "/.netlify/functions/invoices/parse"
   status = 200
 
+# Page route — MUST stay after the /invoices/* function routes above so it
+# doesn't shadow them (Netlify matches top-down).
+[[redirects]]
+  from = "/invoices"
+  to = "/invoices.html"
+  status = 200
+
 [[redirects]]
   from = "/sales/save"
   to = "/.netlify/functions/sales/save"

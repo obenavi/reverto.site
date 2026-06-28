@@ -76,10 +76,32 @@ exports.handler = async (event) => {
   const payload = verifyJwt(event.headers['authorization']);
   if (!payload) return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
 
-  const invoice_id = event.queryStringParameters?.id;
-  if (!invoice_id) return { statusCode: 400, body: JSON.stringify({ error: 'id required' }) };
-
   const H = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
+
+  const invoice_id = event.queryStringParameters?.id;
+
+  // No id => return the list of this business's invoices (scoped by JWT business_id).
+  if (!invoice_id) {
+    try {
+      const listRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/invoices?business_id=eq.${payload.business_id}&select=id,vendor_name,invoice_number,invoice_date,total_amount,status,created_at&order=created_at.desc`,
+        { headers: H }
+      );
+      if (!listRes.ok) {
+        console.error('invoices/list list fetch failed:', listRes.status, await listRes.text().catch(() => ''));
+        return { statusCode: 500, body: JSON.stringify({ error: 'Server error' }) };
+      }
+      const invoices = await listRes.json();
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoices })
+      };
+    } catch (err) {
+      console.error('invoices/list list error:', err);
+      return { statusCode: 500, body: JSON.stringify({ error: 'Server error' }) };
+    }
+  }
 
   // Fetch invoice row, scoped by business_id from JWT (never trust client)
   const invRes = await fetch(
