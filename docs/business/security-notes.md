@@ -139,3 +139,15 @@ LOW / HARDEN LATER
 PRE-STRIPE GATE: This review is not a substitute for a professional pentest. Do NOT connect Stripe /
 store payment data until the CRITICAL RLS/key item is fixed and re-verified, and ideally a real
 pentest is done. Said so to founder.
+
+### 2026-06-28 — CRITICAL RLS hole resolved (new project javitvqlvkluofzbaewx)
+
+Applied fixes after the full audit:
+- Netlify `SUPABASE_KEY` switched from the anon key to the **service_role** key (verified: JWT `role: service_role`, ref `javitvqlvkluofzbaewx`).
+- Migration `enable_rls_lockdown`: enabled RLS on all public tables and `REVOKE ALL ... FROM anon, authenticated`. Verified: `users`/`businesses`/`invoices`/`invoice_items`/`daily_sales`/`usda_prices` all show `rls_on=true`, `anon_select=false`, `anon_insert=false`. Functions keep working via service_role (BYPASSRLS).
+- Code: removed all client-facing error `detail`/`stack`/env-name disclosure (auth-signup, upload, parse) — now logged server-side, generic error to client.
+- JWT verify hardened across upload/parse/list: assert `alg=HS256`, timing-safe signature compare, try/catch around decode.
+- market/sync: constant-time CRON secret compare.
+- netlify.toml: added Content-Security-Policy + Strict-Transport-Security.
+
+Still open (harden later, not blocking): no rate limiting on login/signup; 7-day JWT with no server-side revocation; consider marking Netlify secrets is_secret=true; add business_id filter to invoice_items query once column exists; professional pentest before Stripe.
