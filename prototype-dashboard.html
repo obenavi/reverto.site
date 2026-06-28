@@ -163,6 +163,8 @@
   /* ---------- HERO: FOOD COST % ---------- */
   .hero {
     grid-column: 1 / -1;
+    /* override the landing-page .hero in style.css (min-height:100vh, flex centering) */
+    min-height: 0; display: block; text-align: left;
     background: linear-gradient(160deg, rgba(124,58,237,0.07), rgba(219,39,119,0.05));
     border: 1px solid rgba(124,58,237,0.18); border-radius: 22px; padding: 20px;
     position: relative; overflow: hidden;
