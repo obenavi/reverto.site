@@ -1,7 +1,11 @@
 // Invoice parsing: calls Azure Document Intelligence, routes to supplier parser
 const crypto = require('crypto');
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
+const _RAW_SUPABASE_URL = process.env.SUPABASE_URL || '';
+// Accept either a full URL or a bare project ref (build the full URL from the ref).
+const SUPABASE_URL = _RAW_SUPABASE_URL.startsWith('http')
+  ? _RAW_SUPABASE_URL.replace(/\/+$/, '')
+  : (_RAW_SUPABASE_URL ? 'https://' + _RAW_SUPABASE_URL + '.supabase.co' : '');
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const JWT_SECRET = process.env.JWT_SECRET;
 const AZURE_DI_ENDPOINT = process.env.AZURE_DI_ENDPOINT;

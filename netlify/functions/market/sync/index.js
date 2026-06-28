@@ -1,6 +1,10 @@
 // Daily USDA AMS market price sync — triggered by GitHub Actions
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
+const _RAW_SUPABASE_URL = process.env.SUPABASE_URL || '';
+// Accept either a full URL or a bare project ref (build the full URL from the ref).
+const SUPABASE_URL = _RAW_SUPABASE_URL.startsWith('http')
+  ? _RAW_SUPABASE_URL.replace(/\/+$/, '')
+  : (_RAW_SUPABASE_URL ? 'https://' + _RAW_SUPABASE_URL + '.supabase.co' : '');
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const CRON_SECRET = process.env.CRON_SECRET;
 const USDA_API_KEY = process.env.USDA_API_KEY;
