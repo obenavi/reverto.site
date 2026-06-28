@@ -94,16 +94,26 @@ exports.handler = async (event) => {
     }
 
     // 4. Delete DB rows in FK-safe order. Deleting invoices cascades invoice_items
-    //    (invoice_items.invoice_id ... ON DELETE CASCADE).
+    //    (invoice_items.invoice_id ... ON DELETE CASCADE). All other tables that
+    //    reference businesses (daily_sales, locations, suppliers, item_master,
+    //    subscriptions) are NO ACTION, so they must be deleted before the business row.
     const del = async (path) => {
       const res = await fetch(`${B}/${path}`, { method: 'DELETE', headers: H });
       if (!res.ok) throw new Error(`delete ${path} failed: ${res.status}`);
     };
 
+    // push_subscriptions is scoped by user_id (no business_id column), so collect
+    // this business's user ids first and clear their push subscriptions too.
+    const usersRes = await fetch(`${B}/users?business_id=eq.${biz}&select=id`, { headers: H });
+    const userIds = usersRes.ok ? (await usersRes.json()).map((u) => u.id) : [];
+
     await del(`invoices?business_id=eq.${biz}`);
     await del(`daily_sales?business_id=eq.${biz}`);
     await del(`locations?business_id=eq.${biz}`);
     await del(`suppliers?business_id=eq.${biz}`);
+    await del(`item_master?business_id=eq.${biz}`);
+    await del(`subscriptions?business_id=eq.${biz}`);
+    if (userIds.length) await del(`push_subscriptions?user_id=in.(${userIds.join(',')})`);
     await del(`users?business_id=eq.${biz}`);
     await del(`businesses?id=eq.${biz}`);
 

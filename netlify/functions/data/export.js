@@ -71,6 +71,7 @@ exports.handler = async (event) => {
     const daily_sales = await getJson(H, `${B}/daily_sales?business_id=eq.${biz}&select=*`);
     const locations = await getJson(H, `${B}/locations?business_id=eq.${biz}&select=*`);
     const suppliers = await getJson(H, `${B}/suppliers?business_id=eq.${biz}&select=*`);
+    const item_master = await getJson(H, `${B}/item_master?business_id=eq.${biz}&select=*`);
 
     const exportPayload = {
       export_generated_at: new Date().toISOString(),
@@ -82,6 +83,7 @@ exports.handler = async (event) => {
       daily_sales,
       locations,
       suppliers,
+      item_master,
     };
 
     return {
