@@ -181,6 +181,75 @@ input:focus {
   color: var(--color-muted);
 }
 
+/* App navigation (shared across app/sales/dashboard/invoice) */
+.appnav {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+}
+.appnav a {
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+.appnav a:hover { background: rgba(124,58,237,0.06); text-decoration: none; }
+.appnav a.active { color: var(--color-primary); background: rgba(124,58,237,0.1); }
+
+/* Big metric (dashboard) */
+.metric {
+  text-align: center;
+  padding: 12px 0;
+}
+.metric .metric-value {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.metric .metric-label {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.metric-good { color: #15803d; }
+.metric-warn { color: #b45309; }
+.metric-bad  { color: var(--color-error); }
+
+.stat-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+.stat-row .card {
+  flex: 1;
+  margin-top: 0;
+  text-align: center;
+  padding: 16px;
+}
+.stat-row .stat-value { font-size: 1.3rem; font-weight: 700; }
+.stat-row .stat-label { font-size: 0.8rem; color: var(--color-muted); }
+
+/* Tables */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-top: 8px;
+}
+.data-table th, .data-table td {
+  text-align: left;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+.data-table th { color: var(--color-muted); font-size: 0.8rem; text-transform: uppercase; }
+.data-table td.num, .data-table th.num { text-align: right; }
+
 /* Helper text */
 .muted { color: var(--color-muted); font-size: 0.9rem; }
 .center { text-align: center; }

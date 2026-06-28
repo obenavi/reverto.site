@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reverto — Daily Sales</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="appbar">
+    <span class="brand">Reverto</span>
+    <span class="user-info">
+      <span id="user-name"></span>
+      <a href="#" id="logout-link">Log out</a>
+    </span>
+  </div>
+
+  <nav class="appnav">
+    <a href="/app.html">Upload</a>
+    <a href="/sales.html" class="active">Sales</a>
+    <a href="/dashboard.html">Dashboard</a>
+  </nav>
+
+  <div class="container">
+    <div class="card">
+      <h2>Enter daily sales</h2>
+      <p class="muted">Record your end-of-day numbers. Re-saving the same date updates it.</p>
+
+      <form id="sales-form">
+        <div class="field">
+          <label for="report_date">Date</label>
+          <input type="date" id="report_date" required>
+        </div>
+        <div class="field">
+          <label for="net_sales">Net sales ($)</label>
+          <input type="number" id="net_sales" min="0" step="0.01" inputmode="decimal" required>
+        </div>
+        <div class="field">
+          <label for="tax">Tax ($) <span class="muted">optional</span></label>
+          <input type="number" id="tax" min="0" step="0.01" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="tips">Tips ($) <span class="muted">optional</span></label>
+          <input type="number" id="tips" min="0" step="0.01" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="covers">Covers <span class="muted">optional</span></label>
+          <input type="number" id="covers" min="0" step="1" inputmode="numeric">
+        </div>
+        <button type="submit" class="btn" id="sales-submit">Save</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/db.js?v=2"></script>
+  <script>
+    Auth.requireAuth();
+    document.getElementById('user-name').textContent = Auth.name() || '';
+    document.getElementById('logout-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      Auth.clear();
+      window.location.href = '/login.html';
+    });
+
+    const dateInput = document.getElementById('report_date');
+    dateInput.value = new Date().toISOString().slice(0, 10);
+
+    const form = document.getElementById('sales-form');
+    const submitBtn = document.getElementById('sales-submit');
+
+    function numOrUndef(id) {
+      const v = document.getElementById(id).value;
+      return v === '' ? undefined : Number(v);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const report_date = dateInput.value;
+      const net_sales = numOrUndef('net_sales');
+
+      if (!report_date) { showToast('Please pick a date', 'error'); return; }
+      if (net_sales === undefined || isNaN(net_sales) || net_sales < 0) {
+        showToast('Enter valid net sales', 'error'); return;
+      }
+
+      submitBtn.disabled = true;
+      try {
+        const res = await apiFetch('/sales/save', {
+          method: 'POST',
+          body: JSON.stringify({
+            report_date,
+            net_sales,
+            tax: numOrUndef('tax'),
+            tips: numOrUndef('tips'),
+            covers: numOrUndef('covers'),
+          })
+        });
+        if (!res) return; // redirected on 401
+        if (res.ok && res.data && res.data.saved) {
+          showToast('Sales saved for ' + formatDate(report_date), 'success');
+        } else {
+          showToast((res.data && res.data.error) || 'Could not save sales', 'error');
+        }
+      } catch (err) {
+        showToast('Network error — please try again', 'error');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

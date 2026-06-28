@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reverto — Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="appbar">
+    <span class="brand">Reverto</span>
+    <span class="user-info">
+      <span id="user-name"></span>
+      <a href="#" id="logout-link">Log out</a>
+    </span>
+  </div>
+
+  <nav class="appnav">
+    <a href="/app.html">Upload</a>
+    <a href="/sales.html">Sales</a>
+    <a href="/dashboard.html" class="active">Dashboard</a>
+  </nav>
+
+  <div class="container">
+    <div class="card">
+      <h2>Food cost</h2>
+      <form id="range-form" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
+        <div class="field" style="margin:0; flex:1; min-width:130px;">
+          <label for="from">From</label>
+          <input type="date" id="from">
+        </div>
+        <div class="field" style="margin:0; flex:1; min-width:130px;">
+          <label for="to">To</label>
+          <input type="date" id="to">
+        </div>
+        <button type="submit" class="btn btn-auto">Apply</button>
+      </form>
+
+      <div id="metric" class="metric" style="display:none;">
+        <div class="metric-value" id="fcp-value">—</div>
+        <div class="metric-label">Food Cost %</div>
+      </div>
+
+      <div class="stat-row" id="stats" style="display:none;">
+        <div class="card">
+          <div class="stat-value" id="total-sales">—</div>
+          <div class="stat-label">Total sales</div>
+        </div>
+        <div class="card">
+          <div class="stat-value" id="total-cost">—</div>
+          <div class="stat-label">Food cost</div>
+        </div>
+      </div>
+
+      <p class="muted" id="empty-msg" style="display:none; margin-top:16px;"></p>
+    </div>
+
+    <div class="card" id="table-card" style="display:none;">
+      <h2 style="font-size:1.05rem;">Daily breakdown</h2>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th class="num">Net sales</th>
+            <th class="num">Food cost</th>
+            <th class="num">%</th>
+          </tr>
+        </thead>
+        <tbody id="day-rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="/js/db.js?v=2"></script>
+  <script>
+    Auth.requireAuth();
+    document.getElementById('user-name').textContent = Auth.name() || '';
+    document.getElementById('logout-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      Auth.clear();
+      window.location.href = '/login.html';
+    });
+
+    function fcpClass(pct) {
+      if (pct == null) return '';
+      if (pct < 30) return 'metric-good';
+      if (pct <= 35) return 'metric-warn';
+      return 'metric-bad';
+    }
+
+    async function load() {
+      const f = document.getElementById('from').value;
+      const t = document.getElementById('to').value;
+      const params = [];
+      if (f) params.push('from=' + encodeURIComponent(f));
+      if (t) params.push('to=' + encodeURIComponent(t));
+      const qs = params.length ? '?' + params.join('&') : '';
+
+      const res = await apiFetch('/sales/report' + qs);
+      if (!res) return; // redirected on 401
+      if (!res.ok || !res.data || res.data.error) {
+        showToast((res.data && res.data.error) || 'Could not load report', 'error');
+        return;
+      }
+      const d = res.data;
+
+      // Sync the date inputs with the resolved range.
+      document.getElementById('from').value = d.from;
+      document.getElementById('to').value = d.to;
+
+      const metric = document.getElementById('metric');
+      const stats = document.getElementById('stats');
+      const tableCard = document.getElementById('table-card');
+      const emptyMsg = document.getElementById('empty-msg');
+
+      const fcpEl = document.getElementById('fcp-value');
+      if (d.food_cost_pct == null) {
+        fcpEl.textContent = '—';
+        fcpEl.className = 'metric-value';
+      } else {
+        fcpEl.textContent = formatPct(d.food_cost_pct);
+        fcpEl.className = 'metric-value ' + fcpClass(d.food_cost_pct);
+      }
+      metric.style.display = 'block';
+
+      document.getElementById('total-sales').textContent = formatUSD(d.total_sales || 0);
+      document.getElementById('total-cost').textContent = formatUSD(d.total_food_cost || 0);
+      stats.style.display = 'flex';
+
+      const rows = document.getElementById('day-rows');
+      rows.innerHTML = '';
+      if (d.days && d.days.length) {
+        emptyMsg.style.display = 'none';
+        tableCard.style.display = 'block';
+        for (const day of d.days) {
+          const tr = document.createElement('tr');
+          const cells = [
+            formatDate(day.report_date),
+            formatUSD(day.net_sales || 0),
+            formatUSD(day.food_cost || 0),
+            day.pct == null ? '—' : formatPct(day.pct),
+          ];
+          cells.forEach((val, i) => {
+            const td = document.createElement('td');
+            td.textContent = val;
+            if (i > 0) td.className = 'num';
+            tr.appendChild(td);
+          });
+          rows.appendChild(tr);
+        }
+      } else {
+        tableCard.style.display = 'none';
+        emptyMsg.style.display = 'block';
+        emptyMsg.textContent = 'No sales entered in this range yet. Add some on the Sales page.';
+      }
+    }
+
+    document.getElementById('range-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      load();
+    });
+
+    load();
+  </script>
+</body>
+</html>

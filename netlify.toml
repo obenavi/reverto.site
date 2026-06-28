@@ -73,3 +73,23 @@
   from = "/invoices/parse"
   to = "/.netlify/functions/invoices/parse"
   status = 200
+
+[[redirects]]
+  from = "/sales/save"
+  to = "/.netlify/functions/sales/save"
+  status = 200
+
+[[redirects]]
+  from = "/sales/report"
+  to = "/.netlify/functions/sales/report"
+  status = 200
+
+[[redirects]]
+  from = "/sales"
+  to = "/sales.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard"
+  to = "/dashboard.html"
+  status = 200
