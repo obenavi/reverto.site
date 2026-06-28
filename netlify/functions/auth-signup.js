@@ -45,9 +45,10 @@ exports.handler = async (event) => {
     'Prefer': 'return=representation'
   };
 
-  // Check for existing email
+  // Check for existing email — surface DB errors loudly instead of treating them as "no user"
   const check = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email.toLowerCase())}&select=id&limit=1`, { headers: H });
-  const existing = check.ok ? await check.json() : [];
+  if (!check.ok) return { statusCode: 500, body: JSON.stringify({ error: 'Failed to query users', detail: await check.text() }) };
+  const existing = await check.json();
   if (existing.length) return { statusCode: 409, body: JSON.stringify({ error: 'Email already registered' }) };
 
   const passwordHash = await bcrypt.hash(password, 10);
@@ -60,6 +61,8 @@ exports.handler = async (event) => {
   });
   if (!bizRes.ok) return { statusCode: 500, body: JSON.stringify({ error: 'Failed to create business', detail: await bizRes.text() }) };
   const [biz] = await bizRes.json();
+  // An insert blocked by RLS can still return 2xx with an empty body — catch that explicitly.
+  if (!biz || !biz.id) return { statusCode: 500, body: JSON.stringify({ error: 'Business was not created — likely a database permission (RLS) issue or the wrong Supabase key' }) };
 
   // Create user
   const userRes = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
@@ -69,6 +72,7 @@ exports.handler = async (event) => {
   });
   if (!userRes.ok) return { statusCode: 500, body: JSON.stringify({ error: 'Failed to create user', detail: await userRes.text() }) };
   const [user] = await userRes.json();
+  if (!user || !user.id) return { statusCode: 500, body: JSON.stringify({ error: 'User was not created — likely a database permission (RLS) issue' }) };
 
   // Update business owner_id
   await fetch(`${SUPABASE_URL}/rest/v1/businesses?id=eq.${biz.id}`, {
