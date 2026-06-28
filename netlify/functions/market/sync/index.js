@@ -1,5 +1,7 @@
 // Daily USDA AMS market price sync — triggered by GitHub Actions
 
+const crypto = require('crypto');
+
 const _RAW_SUPABASE_URL = process.env.SUPABASE_URL || '';
 // Accept either a full URL or a bare project ref (build the full URL from the ref).
 const SUPABASE_URL = _RAW_SUPABASE_URL.startsWith('http')
@@ -22,7 +24,9 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
   const secret = event.headers['x-cron-secret'] || '';
-  if (secret !== CRON_SECRET) return { statusCode: 401, body: 'Unauthorized' };
+  const a = Buffer.from(secret);
+  const b = Buffer.from(CRON_SECRET || '');
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return { statusCode: 401, body: 'Unauthorized' };
 
   const H = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' };
 

@@ -12,15 +12,23 @@ const AZURE_DI_ENDPOINT = process.env.AZURE_DI_ENDPOINT;
 const AZURE_DI_KEY = process.env.AZURE_DI_KEY;
 
 function verifyJwt(authHeader) {
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.slice(7);
-  const [h, b, s] = token.split('.');
-  if (!h || !b || !s) return null;
-  const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${h}.${b}`).digest('base64url');
-  if (expected !== s) return null;
-  const payload = JSON.parse(Buffer.from(b, 'base64url').toString());
-  if (payload.exp < Date.now() / 1000) return null;
-  return payload;
+  try {
+    if (!authHeader?.startsWith('Bearer ')) return null;
+    const token = authHeader.slice(7);
+    const [h, b, s] = token.split('.');
+    if (!h || !b || !s) return null;
+    const header = JSON.parse(Buffer.from(h, 'base64url').toString());
+    if (header.alg !== 'HS256') return null;
+    const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${h}.${b}`).digest('base64url');
+    const sigBuf = Buffer.from(s);
+    const expBuf = Buffer.from(expected);
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+    const payload = JSON.parse(Buffer.from(b, 'base64url').toString());
+    if (!payload.exp || payload.exp < Date.now() / 1000) return null;
+    return payload;
+  } catch (_) {
+    return null;
+  }
 }
 
 exports.handler = async (event) => {
@@ -64,7 +72,7 @@ exports.handler = async (event) => {
     }
   );
 
-  if (!analyzeRes.ok) return { statusCode: 500, body: JSON.stringify({ error: 'Azure DI error', detail: await analyzeRes.text() }) };
+  if (!analyzeRes.ok) { console.error('parse: Azure DI error:', await analyzeRes.text()); return { statusCode: 500, body: JSON.stringify({ error: 'Azure DI error' }) }; }
 
   const operationUrl = analyzeRes.headers.get('operation-location');
   if (!operationUrl) return { statusCode: 500, body: JSON.stringify({ error: 'No operation URL from Azure' }) };

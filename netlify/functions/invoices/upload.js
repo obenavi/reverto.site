@@ -25,15 +25,23 @@ const BUCKET = 'invoices';
 
 // Same inline verify pattern as invoices/parse.js (no shared auth lib in this codebase).
 function verifyJwt(authHeader) {
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.slice(7);
-  const [h, b, s] = token.split('.');
-  if (!h || !b || !s) return null;
-  const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${h}.${b}`).digest('base64url');
-  if (expected !== s) return null;
-  const payload = JSON.parse(Buffer.from(b, 'base64url').toString());
-  if (payload.exp < Date.now() / 1000) return null;
-  return payload;
+  try {
+    if (!authHeader?.startsWith('Bearer ')) return null;
+    const token = authHeader.slice(7);
+    const [h, b, s] = token.split('.');
+    if (!h || !b || !s) return null;
+    const header = JSON.parse(Buffer.from(h, 'base64url').toString());
+    if (header.alg !== 'HS256') return null;
+    const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${h}.${b}`).digest('base64url');
+    const sigBuf = Buffer.from(s);
+    const expBuf = Buffer.from(expected);
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+    const payload = JSON.parse(Buffer.from(b, 'base64url').toString());
+    if (!payload.exp || payload.exp < Date.now() / 1000) return null;
+    return payload;
+  } catch (_) {
+    return null;
+  }
 }
 
 // Map a few common upload mime types to file extensions for the storage path.
@@ -89,7 +97,8 @@ exports.handler = async (event) => {
     })
   });
   if (!insertRes.ok) {
-    return { statusCode: 500, body: JSON.stringify({ error: 'Failed to create invoice record', detail: await insertRes.text() }) };
+    console.error('upload: invoice insert failed:', await insertRes.text());
+    return { statusCode: 500, body: JSON.stringify({ error: 'Failed to create invoice record' }) };
   }
   const [invoice] = await insertRes.json();
   const invoiceId = invoice.id;
@@ -107,7 +116,8 @@ exports.handler = async (event) => {
     body: fileBuffer
   });
   if (!uploadRes.ok) {
-    return { statusCode: 500, body: JSON.stringify({ error: 'Failed to upload file to storage', detail: await uploadRes.text() }) };
+    console.error('upload: storage upload failed:', await uploadRes.text());
+    return { statusCode: 500, body: JSON.stringify({ error: 'Failed to upload file to storage' }) };
   }
 
   // 3. Record the storage path on the invoice row.

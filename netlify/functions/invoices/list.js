@@ -11,15 +11,23 @@ const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const JWT_SECRET = process.env.JWT_SECRET;
 
 function verifyJwt(authHeader) {
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.slice(7);
-  const [h, b, s] = token.split('.');
-  if (!h || !b || !s) return null;
-  const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${h}.${b}`).digest('base64url');
-  if (expected !== s) return null;
-  const payload = JSON.parse(Buffer.from(b, 'base64url').toString());
-  if (payload.exp < Date.now() / 1000) return null;
-  return payload;
+  try {
+    if (!authHeader?.startsWith('Bearer ')) return null;
+    const token = authHeader.slice(7);
+    const [h, b, s] = token.split('.');
+    if (!h || !b || !s) return null;
+    const header = JSON.parse(Buffer.from(h, 'base64url').toString());
+    if (header.alg !== 'HS256') return null;
+    const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${h}.${b}`).digest('base64url');
+    const sigBuf = Buffer.from(s);
+    const expBuf = Buffer.from(expected);
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+    const payload = JSON.parse(Buffer.from(b, 'base64url').toString());
+    if (!payload.exp || payload.exp < Date.now() / 1000) return null;
+    return payload;
+  } catch (_) {
+    return null;
+  }
 }
 
 // Maps lowercased description substrings to USDA commodity keys.

@@ -74,3 +74,68 @@ were accidentally removed upstream, items could leak cross-tenant. Recommend add
 - `verifyJwt` in list.js is byte-for-byte identical to parse.js canonical pattern.
 - Invoice query at list.js:33 uses `business_id=eq.${payload.business_id}` from JWT, not client input.
 - No client-supplied `business_id` accepted anywhere.
+
+### 2026-06-28 — Full production security audit (app is LIVE at reverto.site)
+
+Scope: `auth-signup.js`, `auth-login.js`, `invoices/upload.js`, `invoices/parse.js`,
+`invoices/list.js`, `market/sync/index.js`, `js/db.js`, `login.html`, `app.html`, `invoice.html`,
+`netlify.toml`. New dedicated Supabase project `javitvqlvkluofzbaewx`.
+
+NOTE: Supabase MCP tools were not reachable in this session — live RLS/grants state could not be
+machine-verified. Findings below rely on the stated posture (RLS DISABLED on all tables, anon key
+in `SUPABASE_KEY`, anon granted full INSERT/SELECT). Founder must confirm via dashboard.
+
+CRITICAL
+- RLS disabled + anon key is the app's only DB credential. With RLS off and anon holding full
+  SELECT/INSERT, the entire database is exposed to anyone who has the anon key OR can reach the
+  Supabase REST endpoint directly. The anon key is designed to be public (it ships to browsers in
+  normal Supabase apps) and the project URL is discoverable. Anyone can hit
+  `https://javitvqlvkluofzbaewx.supabase.co/rest/v1/users?select=*` with the anon key and read every
+  tenant's users (incl. bcrypt password_hash), businesses, invoices, invoice_items. The fact that
+  Reverto only uses the key server-side does NOT contain this — the key + URL are not secret.
+  FIX (must fix now): switch `SUPABASE_KEY` to the service_role key, enable RLS on every table
+  (`users`, `businesses`, `invoices`, `invoice_items`, `usda_prices`), and REVOKE anon/public
+  grants. service_role bypasses RLS so functions keep working; RLS+revoke means a leaked/known anon
+  key yields nothing. usda_prices may keep a public read policy (non-sensitive global data) if
+  desired.
+
+HIGH
+- auth-signup.js:91 — catch block returns `err.message` AND `err.stack` to the client. Leaks file
+  paths, internals, library versions. FIX: log server-side, return generic `{error:'Signup failed'}`.
+- Info disclosure via `detail: await res.text()` returns raw Supabase/PostgREST error bodies to the
+  client: auth-signup.js:50, 62, 73; invoices/upload.js:92, 110; invoices/parse.js:67. These leak
+  column names, constraint names, RLS messages, schema. FIX: log server-side only; return generic
+  error strings to client.
+- auth-signup.js:24-26 — the "Server misconfigured: missing X" message enumerates which env vars
+  are unset. Minor recon aid. FIX: generic 500, log specifics server-side.
+
+MEDIUM
+- market/sync/index.js:25 — CRON_SECRET compared with `!==` (non-constant-time). Timing side channel
+  on a shared secret. FIX: `crypto.timingSafeEqual` over equal-length buffers (length-guard first).
+- JWT alg confusion / header not validated — verifyJwt (upload/parse/list) and makeJwt recompute
+  HS256 over `h.b` and compare the signature, so a forged `alg:none` token fails the HMAC check
+  (good, no bypass). BUT the decoded header's `alg` is never asserted to be HS256. Low practical risk
+  with a symmetric-only verifier, but assert `alg==='HS256'` for defense in depth. Also: a malformed
+  base64 payload throws inside verifyJwt (uncaught) -> 500 instead of 401; wrap the JSON.parse in
+  try/catch and return null.
+- No `Content-Security-Policy` header in netlify.toml. invoice.html builds rows via innerHTML; it
+  does escape via escHtml() (good), but a CSP is cheap defense-in-depth for an app that will handle
+  Stripe. Add a restrictive CSP and `Strict-Transport-Security`. (X-Frame-Options/nosniff present.)
+- upload.js size cap is on base64 length (8M chars), applied AFTER full body is in memory; Netlify's
+  own 6MB limit is the real bound. Acceptable. Extension is whitelisted to [a-z0-9]{1,5} (line 65) —
+  the earlier low finding is resolved. Content-type is passed straight to Supabase Storage and Azure;
+  fine.
+
+LOW / HARDEN LATER
+- invoices/list.js:86 — invoice_items still queried by invoice_id only, no business_id filter. Gated
+  by the ownership 404 on line 77-82 and non-guessable UUIDs. Carry-over from prior review; add
+  business_id scoping if/when invoice_items gets that column.
+- JWT has no rotation/refresh and 7-day expiry with no revocation list; logout is client-side only.
+  A leaked token is valid for 7 days. Acceptable pre-Stripe; revisit.
+- Password min length 8, bcrypt cost 10 — fine. No rate limiting on login/signup (brute-force +
+  signup spam). Add before scale.
+- Dependencies: only bcryptjs ^2.4.3 (no known criticals). market/sync has none.
+
+PRE-STRIPE GATE: This review is not a substitute for a professional pentest. Do NOT connect Stripe /
+store payment data until the CRITICAL RLS/key item is fixed and re-verified, and ideally a real
+pentest is done. Said so to founder.

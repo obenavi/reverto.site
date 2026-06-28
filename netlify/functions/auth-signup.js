@@ -21,9 +21,10 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
   if (!SUPABASE_URL || !SUPABASE_KEY || !JWT_SECRET) {
-    return { statusCode: 500, body: JSON.stringify({ error: 'Server misconfigured: missing ' +
+    console.error('signup misconfigured; missing env:',
       [['SUPABASE_URL', SUPABASE_URL], ['SUPABASE_KEY', SUPABASE_KEY], ['JWT_SECRET', JWT_SECRET]]
-        .filter(([, v]) => !v).map(([k]) => k).join(', ') }) };
+        .filter(([, v]) => !v).map(([k]) => k).join(', '));
+    return { statusCode: 500, body: JSON.stringify({ error: 'Server error' }) };
   }
 
   let body;
@@ -47,7 +48,7 @@ exports.handler = async (event) => {
 
   // Check for existing email — surface DB errors loudly instead of treating them as "no user"
   const check = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email.toLowerCase())}&select=id&limit=1`, { headers: H });
-  if (!check.ok) return { statusCode: 500, body: JSON.stringify({ error: 'Failed to query users', detail: await check.text() }) };
+  if (!check.ok) { console.error('signup: users query failed:', await check.text()); return { statusCode: 500, body: JSON.stringify({ error: 'Server error' }) }; }
   const existing = await check.json();
   if (existing.length) return { statusCode: 409, body: JSON.stringify({ error: 'Email already registered' }) };
 
@@ -59,10 +60,10 @@ exports.handler = async (event) => {
     headers: H,
     body: JSON.stringify({ name: business_name, plan: 'free' })
   });
-  if (!bizRes.ok) return { statusCode: 500, body: JSON.stringify({ error: 'Failed to create business', detail: await bizRes.text() }) };
+  if (!bizRes.ok) { console.error('signup: business insert failed:', await bizRes.text()); return { statusCode: 500, body: JSON.stringify({ error: 'Server error' }) }; }
   const [biz] = await bizRes.json();
   // An insert blocked by RLS can still return 2xx with an empty body — catch that explicitly.
-  if (!biz || !biz.id) return { statusCode: 500, body: JSON.stringify({ error: 'Business was not created — likely a database permission (RLS) issue or the wrong Supabase key' }) };
+  if (!biz || !biz.id) { console.error('signup: business insert returned no row (RLS or key issue)'); return { statusCode: 500, body: JSON.stringify({ error: 'Server error' }) }; }
 
   // Create user
   const userRes = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
@@ -70,9 +71,9 @@ exports.handler = async (event) => {
     headers: H,
     body: JSON.stringify({ email: email.toLowerCase(), password_hash: passwordHash, name, business_id: biz.id, role: 'owner' })
   });
-  if (!userRes.ok) return { statusCode: 500, body: JSON.stringify({ error: 'Failed to create user', detail: await userRes.text() }) };
+  if (!userRes.ok) { console.error('signup: user insert failed:', await userRes.text()); return { statusCode: 500, body: JSON.stringify({ error: 'Server error' }) }; }
   const [user] = await userRes.json();
-  if (!user || !user.id) return { statusCode: 500, body: JSON.stringify({ error: 'User was not created — likely a database permission (RLS) issue' }) };
+  if (!user || !user.id) { console.error('signup: user insert returned no row'); return { statusCode: 500, body: JSON.stringify({ error: 'Server error' }) }; }
 
   // Update business owner_id
   await fetch(`${SUPABASE_URL}/rest/v1/businesses?id=eq.${biz.id}`, {
@@ -88,6 +89,7 @@ exports.handler = async (event) => {
     body: JSON.stringify({ token, user_id: user.id, business_id: biz.id, role: 'owner', name, plan: 'free' })
   };
  } catch (err) {
-  return { statusCode: 500, body: JSON.stringify({ error: 'Signup crashed: ' + (err && err.message), stack: err && err.stack }) };
+  console.error('signup crashed:', err && err.stack);
+  return { statusCode: 500, body: JSON.stringify({ error: 'Server error' }) };
  }
 };
