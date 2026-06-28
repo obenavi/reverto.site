@@ -197,6 +197,96 @@
     .variance-over  { color: #ef4444; font-weight: 600; }
     .variance-under { color: #22c55e; font-weight: 600; }
 
+    /* 4-level verdict coloring (data-strategy.md A.7) */
+    .verdict-below      { color: #16a34a; font-weight: 700; }   /* green  */
+    .verdict-at         { color: var(--color-muted); font-weight: 600; } /* neutral */
+    .verdict-above      { color: #b45309; font-weight: 700; }   /* amber  */
+    .verdict-well_above { color: #dc2626; font-weight: 700; }   /* red    */
+
+    .verdict-tag {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-transform: none;
+    }
+
+    /* Confidence pill */
+    .conf-pill {
+      display: inline-block;
+      margin-top: 3px;
+      padding: 1px 7px;
+      border-radius: 99px;
+      font-size: 0.66rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .conf-high   { background: #ede9fe; color: #5b21b6; }
+    .conf-medium { background: #f3f4f6; color: #4b5563; }
+    .conf-low    { background: #fef3c7; color: #92400e; }
+
+    .no-benchmark {
+      color: var(--color-muted);
+      font-size: 0.78rem;
+      font-style: italic;
+    }
+
+    /* Info affordance + popover */
+    .info-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--color-primary);
+      font-size: 0.85rem;
+      padding: 0 0 0 4px;
+      line-height: 1;
+    }
+    .info-btn:hover { color: var(--color-primary-dark); }
+
+    .info-link {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--color-primary);
+      font-size: 0.8rem;
+      padding: 0;
+      text-decoration: underline;
+    }
+
+    .info-popover {
+      position: fixed;
+      z-index: 50;
+      max-width: 320px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 28px rgba(91, 33, 182, 0.18);
+      padding: 14px 16px;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      color: var(--color-text);
+    }
+    .info-popover h4 {
+      margin: 0 0 6px;
+      font-size: 0.9rem;
+      color: var(--color-primary-dark);
+    }
+    .info-popover p { margin: 0 0 8px; }
+    .info-popover .evidence {
+      margin: 0;
+      font-size: 0.78rem;
+      color: var(--color-muted);
+      border-top: 1px solid var(--color-border);
+      padding-top: 8px;
+    }
+    .info-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 49;
+      background: transparent;
+    }
+
     .usda-legend {
       margin-top: 10px;
       font-size: 0.8rem;
@@ -311,7 +401,10 @@
               <th class="num">Unit Price</th>
               <th class="num">Extended</th>
               <th class="num">Cost/lb</th>
-              <th class="num">USDA/lb</th>
+              <th class="num">Market/lb
+                <button type="button" class="info-btn" id="header-info-btn"
+                  aria-label="How is market price calculated?">&#9432;</button>
+              </th>
               <th class="num">vs. Market</th>
             </tr>
           </thead>
@@ -322,13 +415,18 @@
 
       <div class="usda-legend">
         <div class="usda-legend-item">
-          <span class="legend-dot" style="background:#ef4444;"></span>
-          Overpaying vs. USDA market price
+          <span class="legend-dot" style="background:#16a34a;"></span> Below market
         </div>
         <div class="usda-legend-item">
-          <span class="legend-dot" style="background:#22c55e;"></span>
-          At or below market price
+          <span class="legend-dot" style="background:#9ca3af;"></span> At market
         </div>
+        <div class="usda-legend-item">
+          <span class="legend-dot" style="background:#b45309;"></span> Above market
+        </div>
+        <div class="usda-legend-item">
+          <span class="legend-dot" style="background:#dc2626;"></span> Well above market
+        </div>
+        <button type="button" class="info-link" id="footer-info-btn">How is market price calculated?</button>
       </div>
 
     </div>
@@ -358,50 +456,95 @@
       else badge.className = 'badge badge-error';
     }
 
-    function renderVariance(variance_pct) {
-      if (variance_pct == null) return '<span class="dash">—</span>';
-      const sign = variance_pct > 0 ? '+' : '';
-      const cls = variance_pct > 0 ? 'variance-over' : 'variance-under';
-      return `<span class="${cls}">${sign}${variance_pct}%</span>`;
+    const VERDICT_LABEL = {
+      below: 'Below market',
+      at: 'At market',
+      above: 'Above market',
+      well_above: 'Well above market',
+    };
+    const CONF_LABEL = { high: 'High', medium: 'Medium', low: 'Low' };
+
+    // Builds the "vs. Market" cell content with 4-level verdict coloring.
+    function renderVerdictCell(item) {
+      if (item.variance_pct == null || !item.verdict) {
+        return '<span class="no-benchmark">No market benchmark yet</span>';
+      }
+      const sign = item.variance_pct > 0 ? '+' : '';
+      const cls = 'verdict-' + item.verdict;
+      const pctSpan = `<span class="${cls}">${sign}${item.variance_pct}%</span>`;
+      const tagSpan = `<span class="verdict-tag ${cls}">${VERDICT_LABEL[item.verdict] || ''}</span>`;
+      return pctSpan + tagSpan;
+    }
+
+    // Builds the Market/lb cell: price + benchmark label + confidence pill.
+    function renderMarketCell(item) {
+      if (item.usda_price_avg == null) {
+        return '<span class="no-benchmark">No market benchmark yet</span>';
+      }
+      const price = `<div>${escHtml(formatUSD(item.usda_price_avg))}</div>`;
+      let pill = '';
+      if (item.benchmark_confidence) {
+        const c = item.benchmark_confidence;
+        pill = `<span class="conf-pill conf-${escHtml(c)}">${escHtml(CONF_LABEL[c] || c)}</span>`;
+      }
+      return price + pill;
     }
 
     function renderItems(items) {
       const tbody = document.getElementById('items-body');
+      tbody.textContent = '';
       if (!items.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="center muted" style="padding:24px;">No line items found.</td></tr>';
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 8;
+        td.className = 'center muted';
+        td.style.padding = '24px';
+        td.textContent = 'No line items found.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
         return;
       }
-      tbody.innerHTML = items.map(item => {
-        const desc = item.description || '—';
+      tbody.innerHTML = items.map((item, i) => {
         const packSize = item.pack_size || '—';
         const qty = item.quantity != null ? item.quantity : '—';
         const unitPrice = item.unit_price != null ? formatUSD(item.unit_price) : '—';
         const extended = item.extended_price != null ? formatUSD(item.extended_price) : '—';
-        const costPerLb = item.cost_per_lb != null ? formatUSD(item.cost_per_lb) : '<span class="dash">—</span>';
-        const usdaAvg = item.usda_price_avg != null ? formatUSD(item.usda_price_avg) : '<span class="dash">—</span>';
-        const variance = renderVariance(item.variance_pct);
+        const costPerLb = item.cost_per_lb != null ? escHtml(formatUSD(item.cost_per_lb)) : '<span class="dash">—</span>';
 
-        // Highlight row if materially overpaying (variance > 5%)
-        const rowStyle = item.variance_pct != null && item.variance_pct > 5
-          ? ' style="background:#fef2f2;"'
-          : (item.variance_pct != null && item.variance_pct <= 0 ? ' style="background:#f0fdf4;"' : '');
+        // Row tint by verdict (only when a benchmark exists).
+        let rowStyle = '';
+        if (item.verdict === 'well_above' || item.verdict === 'above') rowStyle = ' style="background:#fffbeb;"';
+        else if (item.verdict === 'below') rowStyle = ' style="background:#f0fdf4;"';
+
+        // Info button only when there is a benchmark to explain.
+        const infoBtn = item.usda_price_avg != null
+          ? ` <button type="button" class="info-btn" data-item-info="${i}" aria-label="How is this market price calculated?">&#9432;</button>`
+          : '';
 
         return `<tr${rowStyle}>
           <td>
             <div class="desc-cell">
               <span class="cat-dot ${catClass(item.category)}"></span>
-              ${escHtml(desc)}
+              ${escHtml(item.description || '—')}
             </div>
           </td>
           <td>${escHtml(packSize)}</td>
-          <td class="num">${qty}</td>
-          <td class="num">${unitPrice}</td>
-          <td class="num">${extended}</td>
+          <td class="num">${escHtml(String(qty))}</td>
+          <td class="num">${escHtml(String(unitPrice))}</td>
+          <td class="num">${escHtml(String(extended))}</td>
           <td class="num">${costPerLb}</td>
-          <td class="num">${usdaAvg}</td>
-          <td class="num">${variance}</td>
+          <td class="num">${renderMarketCell(item)}${infoBtn}</td>
+          <td class="num">${renderVerdictCell(item)}</td>
         </tr>`;
       }).join('');
+
+      // Wire per-item info buttons (server data passed by closure, not markup).
+      tbody.querySelectorAll('button[data-item-info]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = parseInt(btn.getAttribute('data-item-info'), 10);
+          openPopover(e.currentTarget, items[idx]);
+        });
+      });
     }
 
     function escHtml(str) {
@@ -411,6 +554,81 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
     }
+
+    // --- "How we calculate this" popover (verbatim USDA-only copy, B.2) ---
+    // v1 is USDA-only, so we always show the USDA-only variant of the copy.
+    const USDA_COPY_TITLE = 'How we calculate this';
+    const USDA_COPY_BODY =
+      'This is the latest USDA published market price for this commodity, from public ' +
+      'government reports updated regularly. It’s a neutral, independent reference for ' +
+      'what this item costs at wholesale — not Reverto’s estimate and not other ' +
+      'restaurants’ prices.';
+
+    let _popoverEl = null;
+    let _overlayEl = null;
+
+    function closePopover() {
+      if (_popoverEl) { _popoverEl.remove(); _popoverEl = null; }
+      if (_overlayEl) { _overlayEl.remove(); _overlayEl = null; }
+    }
+
+    // anchor: the clicked button. item: optional line item for evidence text.
+    function openPopover(anchor, item) {
+      closePopover();
+
+      _overlayEl = document.createElement('div');
+      _overlayEl.className = 'info-overlay';
+      _overlayEl.addEventListener('click', closePopover);
+      document.body.appendChild(_overlayEl);
+
+      const pop = document.createElement('div');
+      pop.className = 'info-popover';
+      pop.setAttribute('role', 'dialog');
+
+      const h = document.createElement('h4');
+      h.textContent = USDA_COPY_TITLE;
+      pop.appendChild(h);
+
+      const p = document.createElement('p');
+      p.textContent = USDA_COPY_BODY;
+      pop.appendChild(p);
+
+      // Per-item evidence (recency / verdict) when available.
+      if (item && item.usda_price_avg != null) {
+        const ev = document.createElement('p');
+        ev.className = 'evidence';
+        const parts = [];
+        if (item.benchmark_age_days != null) {
+          const d = item.benchmark_age_days;
+          parts.push('USDA updated ' + d + (d === 1 ? ' day' : ' days') + ' ago');
+        } else if (item.usda_report_date) {
+          parts.push('USDA report dated ' + formatDate(item.usda_report_date));
+        }
+        if (item.benchmark_confidence) {
+          parts.push('Confidence: ' + (CONF_LABEL[item.benchmark_confidence] || item.benchmark_confidence));
+        }
+        ev.textContent = parts.join(' · ');
+        if (parts.length) pop.appendChild(ev);
+      }
+
+      document.body.appendChild(pop);
+
+      // Position near the anchor, clamped to the viewport.
+      const r = anchor.getBoundingClientRect();
+      const pw = pop.offsetWidth, ph = pop.offsetHeight;
+      let left = Math.min(r.left, window.innerWidth - pw - 12);
+      left = Math.max(12, left);
+      let top = r.bottom + 6;
+      if (top + ph > window.innerHeight - 12) top = Math.max(12, r.top - ph - 6);
+      pop.style.left = left + 'px';
+      pop.style.top = top + 'px';
+    }
+
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopover(); });
+    document.getElementById('header-info-btn')
+      .addEventListener('click', (e) => openPopover(e.currentTarget, null));
+    document.getElementById('footer-info-btn')
+      .addEventListener('click', (e) => openPopover(e.currentTarget, null));
 
     async function loadInvoice() {
       const params = new URLSearchParams(window.location.search);
@@ -446,7 +664,7 @@
       document.getElementById('stat-parsed').textContent = invoice.parsed_at ? formatDate(invoice.parsed_at) : '—';
 
       // Overpaying stat: items where variance_pct > 5 (materially above USDA market)
-      const overpayingCount = items.filter(it => it.variance_pct != null && it.variance_pct > 5).length;
+      const overpayingCount = items.filter(it => it.verdict === 'above' || it.verdict === 'well_above').length;
       const overpayingEl = document.getElementById('stat-overpaying');
       if (overpayingCount > 0) {
         overpayingEl.textContent = overpayingCount + (overpayingCount === 1 ? ' item' : ' items');

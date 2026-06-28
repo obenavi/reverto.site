@@ -51,6 +51,47 @@ const COMMODITY_MAP = [
   { keywords: ['eggs', 'egg'],       commodity: 'EGGS' },
 ];
 
+// --- v1 USDA-only benchmark helpers --------------------------------------
+// Spec: docs/business/data-strategy.md
+//   - USDA recency: report > 21 days old is "stale" (Section A.2 / A.7).
+//   - Verdict thresholds (Section A.7):
+//       below      <= -3%
+//       at         <  5%
+//       above      < 15%
+//       well_above >= 15%
+//   - Confidence (Section B.3): v1 is USDA-only, so the peer-based "High"
+//     case is unreachable. We derive a 3-bucket confidence from USDA report
+//     recency: fresh (<=21d) => high; stale up to 60d => medium; >60d => low.
+
+const USDA_STALE_DAYS = 21;
+const USDA_LOW_CONF_DAYS = 60;
+
+// Whole-day difference between two YYYY-MM-DD(ish) dates. Returns null if
+// either date is unparseable. Uses UTC to avoid TZ drift.
+function daysBetween(laterIso, earlierIso) {
+  const later = Date.parse(laterIso);
+  const earlier = Date.parse(earlierIso);
+  if (Number.isNaN(later) || Number.isNaN(earlier)) return null;
+  return Math.floor((later - earlier) / 86400000);
+}
+
+// Reference date for recency = the invoice date if present, else today.
+function benchmarkConfidence(ageDays) {
+  if (ageDays == null) return 'low';
+  if (ageDays <= USDA_STALE_DAYS) return 'high';
+  if (ageDays <= USDA_LOW_CONF_DAYS) return 'medium';
+  return 'low';
+}
+
+function benchmarkVerdict(variance_pct) {
+  if (variance_pct == null) return null;
+  const d = variance_pct / 100;
+  if (d <= -0.03) return 'below';
+  if (d < 0.05) return 'at';
+  if (d < 0.15) return 'above';
+  return 'well_above';
+}
+
 function matchCommodity(description) {
   const lower = (description || '').toLowerCase();
   for (const entry of COMMODITY_MAP) {
@@ -142,12 +183,20 @@ exports.handler = async (event) => {
         usda_price_high: null,
         usda_report_date: null,
         variance_pct: null,
+        // v1 benchmark fields — null when there is no USDA match.
+        benchmark_label: null,
+        benchmark_confidence: null,
+        benchmark_age_days: null,
+        verdict: null,
       };
     }
     let variance_pct = null;
     if (item.cost_per_lb != null && usda.price_avg != null && usda.price_avg !== 0) {
       variance_pct = Math.round(((item.cost_per_lb - usda.price_avg) / usda.price_avg) * 100 * 10) / 10;
     }
+    // Recency relative to the invoice date when known, else today.
+    const refDate = invRows[0].invoice_date || new Date().toISOString();
+    const ageDays = usda.report_date ? daysBetween(refDate, usda.report_date) : null;
     return {
       ...item,
       usda_price_avg: usda.price_avg,
@@ -155,6 +204,11 @@ exports.handler = async (event) => {
       usda_price_high: usda.price_high,
       usda_report_date: usda.report_date,
       variance_pct,
+      // v1 is USDA-only — reserved peer/blend labels are NOT used here.
+      benchmark_label: 'USDA market price',
+      benchmark_confidence: benchmarkConfidence(ageDays),
+      benchmark_age_days: ageDays != null && ageDays >= 0 ? ageDays : null,
+      verdict: benchmarkVerdict(variance_pct),
     };
   });
 
