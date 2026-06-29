@@ -28,24 +28,9 @@
     .state-block .spinner { width: 24px; height: 24px; margin: 0 auto 12px; }
   </style>
 </head>
-<body>
-  <div class="appbar">
-    <span class="brand">Reverto</span>
-    <span class="user-info">
-      <span id="user-name"></span>
-      <a href="#" id="logout-link">Log out</a>
-    </span>
-  </div>
-
-  <nav class="appnav">
-    <a href="/app.html">Upload</a>
-    <a href="/invoices.html" class="active">Invoices</a>
-    <a href="/sales.html">Sales</a>
-    <a href="/dashboard.html">Dashboard</a>
-    <a href="/account.html">Account</a>
-  </nav>
-
-  <div class="container">
+<body class="app-body">
+  <div class="app-frame">
+  <main class="app-content">
     <div class="card">
       <h2>Invoices</h2>
 
@@ -74,18 +59,14 @@
         </table>
       </div>
     </div>
+  </main>
   </div>
 
   <script src="/js/db.js?v=2"></script>
+  <script src="/js/shell.js?v=1"></script>
   <script>
     if (!Auth.requireAuth()) throw new Error('redirect');
-
-    document.getElementById('user-name').textContent = Auth.name() || '';
-    document.getElementById('logout-link').addEventListener('click', (e) => {
-      e.preventDefault();
-      Auth.clear();
-      window.location.href = '/login.html';
-    });
+    Shell.mount(document.querySelector('.app-frame'), 'dashboard');
 
     function statusBadge(status) {
       const span = document.createElement('span');
@@ -162,10 +143,5 @@
       showToast('Failed to load invoices', 'error');
     });
   </script>
-  <footer class="site-footer">
-    <a href="/privacy.html">Privacy</a>
-    <span aria-hidden="true">·</span>
-    <a href="/terms.html">Terms</a>
-  </footer>
 </body>
 </html>

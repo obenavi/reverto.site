@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vendors — Reverto</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-body">
+  <div class="app-frame">
+  <main class="app-content">
+    <h1 class="greeting">Vendors</h1>
+    <p class="greeting-sub">Your distributors and supplier relationships.</p>
+    <div class="cs-page">
+      <div class="card-link">
+        <div class="coming-soon">
+          <span class="cs-ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M3 6h11v9H3z"/><path d="M14 9h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/></svg></span>
+          <span class="cs-t">Vendor management <span class="cs-pill">COMING SOON</span></span>
+          <span class="cs-s">Manage your distributors, payment terms, and spend by vendor in one place. Until then, every parsed invoice already tags its vendor.</span>
+        </div>
+      </div>
+    </div>
+  </main>
+  </div>
+
+  <script src="/js/db.js?v=2"></script>
+  <script src="/js/shell.js?v=1"></script>
+  <script>
+    if (!Auth.requireAuth()) throw new Error('redirect');
+    Shell.mount(document.querySelector('.app-frame'), 'vendors');
+  </script>
+</body>
+</html>

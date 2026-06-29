@@ -128,3 +128,19 @@
   from = "/account"
   to = "/account.html"
   status = 200
+
+# New shell page routes (placeholder pages reachable from the bottom nav).
+[[redirects]]
+  from = "/market"
+  to = "/market.html"
+  status = 200
+
+[[redirects]]
+  from = "/vendors"
+  to = "/vendors.html"
+  status = 200
+
+[[redirects]]
+  from = "/recipes"
+  to = "/recipes.html"
+  status = 200

@@ -19,24 +19,9 @@
     #delete-confirm { display: none; margin-top: 16px; }
   </style>
 </head>
-<body>
-  <div class="appbar">
-    <a class="brand" href="/app.html" style="text-decoration:none;">Reverto</a>
-    <span class="user-info">
-      <span id="user-name"></span>
-      <a href="#" id="logout-link">Log out</a>
-    </span>
-  </div>
-
-  <nav class="appnav">
-    <a href="/app.html">Upload</a>
-    <a href="/invoices.html">Invoices</a>
-    <a href="/sales.html">Sales</a>
-    <a href="/dashboard.html">Dashboard</a>
-    <a href="/account.html" class="active">Account</a>
-  </nav>
-
-  <div class="container">
+<body class="app-body">
+  <div class="app-frame">
+  <main class="app-content">
     <div class="card">
       <h2>Your data</h2>
       <p class="muted">Download a copy of all the data Reverto holds about your
@@ -65,24 +50,14 @@
     <p class="muted center mt-16">
       See our <a href="/privacy.html">Privacy Policy</a> for how we handle your data.
     </p>
+  </main>
   </div>
 
-  <footer class="site-footer">
-    <a href="/privacy.html">Privacy</a>
-    <span aria-hidden="true">·</span>
-    <a href="/terms.html">Terms</a>
-  </footer>
-
   <script src="/js/db.js?v=2"></script>
+  <script src="/js/shell.js?v=1"></script>
   <script>
     if (!Auth.requireAuth()) throw new Error('redirect');
-
-    document.getElementById('user-name').textContent = Auth.name() || '';
-    document.getElementById('logout-link').addEventListener('click', (e) => {
-      e.preventDefault();
-      Auth.clear();
-      window.location.href = '/login.html';
-    });
+    Shell.mount(document.querySelector('.app-frame'), 'dashboard');
 
     // ── Export ──────────────────────────────────────────────────────────────
     const exportBtn = document.getElementById('export-btn');

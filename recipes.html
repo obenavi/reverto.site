@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recipes — Reverto</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-body">
+  <div class="app-frame">
+  <main class="app-content">
+    <h1 class="greeting">Recipes</h1>
+    <p class="greeting-sub">Recipe BOM (Bill of Materials)</p>
+    <div class="cs-page">
+      <div class="card-link">
+        <div class="coming-soon">
+          <span class="cs-ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M6 3h12a1 1 0 011 1v16l-7-3-7 3V4a1 1 0 011-1z"/><path d="M9 8h6M9 12h6"/></svg></span>
+          <span class="cs-t">Recipe BOM <span class="cs-pill">COMING SOON</span></span>
+          <span class="cs-s">Build each dish from its ingredients and we'll cost it automatically from your real invoice prices, so you'll always know your true plate cost and margin.</span>
+        </div>
+      </div>
+    </div>
+  </main>
+  </div>
+
+  <script src="/js/db.js?v=2"></script>
+  <script src="/js/shell.js?v=1"></script>
+  <script>
+    if (!Auth.requireAuth()) throw new Error('redirect');
+    Shell.mount(document.querySelector('.app-frame'), 'recipes');
+  </script>
+</body>
+</html>

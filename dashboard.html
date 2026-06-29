@@ -6,168 +6,284 @@
   <title>Reverto — Dashboard</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
-  <div class="appbar">
-    <span class="brand">Reverto</span>
-    <span class="user-info">
-      <span id="user-name"></span>
-      <a href="#" id="logout-link">Log out</a>
-    </span>
-  </div>
+<body class="app-body">
+  <div class="app-frame">
+  <main class="app-content">
+    <h1 class="greeting" id="greeting">Welcome back</h1>
+    <p class="greeting-sub" id="greeting-sub">Here's where your kitchen stands.</p>
 
-  <nav class="appnav">
-    <a href="/app.html">Upload</a>
-    <a href="/invoices.html">Invoices</a>
-    <a href="/sales.html">Sales</a>
-    <a href="/dashboard.html" class="active">Dashboard</a>
-    <a href="/account.html">Account</a>
-  </nav>
+    <div class="grid">
 
-  <div class="container">
-    <div class="card">
-      <h2>Food cost</h2>
-      <form id="range-form" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
-        <div class="field" style="margin:0; flex:1; min-width:130px;">
-          <label for="from">From</label>
-          <input type="date" id="from">
+      <!-- 1. FOOD COST % HERO -->
+      <a href="/sales.html" class="fc-hero card-link" id="fc-card" aria-label="Food cost percentage. View sales detail.">
+        <div class="card-head">
+          <span class="card-title">Food cost %</span>
+          <span class="view">View<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
         </div>
-        <div class="field" style="margin:0; flex:1; min-width:130px;">
-          <label for="to">To</label>
-          <input type="date" id="to">
+        <div class="hero-main">
+          <div>
+            <div class="value" id="fc-value">—</div>
+            <div class="hero-foot" id="fc-foot">
+              <span class="target" id="fc-target">Target 30%</span>
+            </div>
+          </div>
+          <div id="fc-spark"></div>
         </div>
-        <button type="submit" class="btn btn-auto">Apply</button>
-      </form>
+        <div class="fc-legend">
+          <span><span class="dot dot-g"></span>Healthy &lt;30%</span>
+          <span><span class="dot dot-a"></span>Watch 30–35%</span>
+          <span><span class="dot dot-r"></span>High &gt;35%</span>
+        </div>
+      </a>
 
-      <div id="metric" class="metric" style="display:none;">
-        <div class="metric-value" id="fcp-value">—</div>
-        <div class="metric-label">Food Cost %</div>
+      <!-- 2. Z-REPORT REMINDER (shown only when yesterday's close is missing) -->
+      <a href="/sales.html" class="zbanner" id="zbanner" style="display:none" aria-label="Add yesterday's Z report.">
+        <span class="zic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
+        <span class="zbody">
+          <span class="zt">Add yesterday's Z report</span>
+          <span class="zs" id="zbanner-sub">Yesterday's close is missing — food cost % can't update without it.</span>
+        </span>
+        <span class="zbtn">Add</span>
+      </a>
+
+      <!-- 3 + 4. SALES + PURCHASES -->
+      <div class="pair">
+        <a href="/sales.html" class="card-link" aria-label="Sales. View sales detail.">
+          <div class="card-head">
+            <span class="card-title">Sales</span>
+            <span class="view">View<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="big-num" id="sales-num">—</div>
+          <div class="sub-trend muted" id="sales-sub">Last 30 days</div>
+        </a>
+
+        <a href="/invoices.html" class="card-link" aria-label="Purchases. View invoices.">
+          <div class="card-head">
+            <span class="card-title">Purchases</span>
+            <span class="view">View<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="big-num" id="purch-num">—</div>
+          <div class="sub-trend muted" id="purch-sub">This month</div>
+        </a>
       </div>
 
-      <div class="stat-row" id="stats" style="display:none;">
-        <div class="card">
-          <div class="stat-value" id="total-sales">—</div>
-          <div class="stat-label">Total sales</div>
+      <!-- 5. PRICE-CHANGE ALERTS (no backend yet → coming soon) -->
+      <div class="card-link" style="cursor:default">
+        <div class="card-head">
+          <span class="card-title">Price-change alerts</span>
         </div>
-        <div class="card">
-          <div class="stat-value" id="total-cost">—</div>
-          <div class="stat-label">Food cost</div>
+        <div class="coming-soon">
+          <span class="cs-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span>
+          <span class="cs-t">Price-change alerts <span class="cs-pill">COMING SOON</span></span>
+          <span class="cs-s">We'll flag items whose unit price rose or fell since your last order.</span>
         </div>
       </div>
 
-      <p class="muted" id="empty-msg" style="display:none; margin-top:16px;"></p>
-    </div>
+      <!-- 6. RECENT INVOICES (real data) -->
+      <a href="/invoices.html" class="card-link" id="recent-card" aria-label="Recent invoices. View all invoices.">
+        <div class="card-head">
+          <span class="card-title">Recent invoices</span>
+          <span class="view">View all<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        </div>
+        <div id="recent-body">
+          <div class="coming-soon"><span class="cs-s">Loading…</span></div>
+        </div>
+      </a>
 
-    <div class="card" id="table-card" style="display:none;">
-      <h2 style="font-size:1.05rem;">Daily breakdown</h2>
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th class="num">Net sales</th>
-            <th class="num">Food cost</th>
-            <th class="num">%</th>
-          </tr>
-        </thead>
-        <tbody id="day-rows"></tbody>
-      </table>
+      <!-- 7. PAYMENTS & VENDOR SPEND (no backend yet → coming soon) -->
+      <div class="card-link" style="cursor:default">
+        <div class="card-head">
+          <span class="card-title">Payments &amp; vendor spend</span>
+        </div>
+        <div class="coming-soon">
+          <span class="cs-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span>
+          <span class="cs-t">Payments &amp; vendor spend <span class="cs-pill">COMING SOON</span></span>
+          <span class="cs-s">Upcoming payments by vendor and a spend breakdown are on the way.</span>
+        </div>
+      </div>
+
     </div>
+  </main>
   </div>
 
   <script src="/js/db.js?v=2"></script>
+  <script src="/js/shell.js?v=1"></script>
   <script>
-    Auth.requireAuth();
-    document.getElementById('user-name').textContent = Auth.name() || '';
-    document.getElementById('logout-link').addEventListener('click', (e) => {
-      e.preventDefault();
-      Auth.clear();
-      window.location.href = '/login.html';
-    });
+    if (!Auth.requireAuth()) throw new Error('redirect');
+    Shell.mount(document.querySelector('.app-frame'), 'dashboard');
 
-    function fcpClass(pct) {
+    // ── Greeting ──────────────────────────────────────────────────────────
+    (function () {
+      var h = new Date().getHours();
+      var part = h < 12 ? 'Good morning' : (h < 18 ? 'Good afternoon' : 'Good evening');
+      var name = (Auth.name() || '').split(/\s+/)[0];
+      document.getElementById('greeting').textContent = name ? (part + ', ' + name) : part;
+      var d = new Date();
+      document.getElementById('greeting-sub').textContent =
+        d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
+        ' · Here\'s where your kitchen stands.';
+    })();
+
+    function fcClass(pct) {
       if (pct == null) return '';
-      if (pct < 30) return 'metric-good';
-      if (pct <= 35) return 'metric-warn';
-      return 'metric-bad';
+      if (pct < 30) return 'fc-good';
+      if (pct <= 35) return 'fc-warn';
+      return 'fc-bad';
+    }
+    function sparkColor(pct) {
+      if (pct == null) return '#9ca3af';
+      if (pct < 30) return '#15803d';
+      if (pct <= 35) return '#d97706';
+      return '#b91c1c';
     }
 
-    async function load() {
-      const f = document.getElementById('from').value;
-      const t = document.getElementById('to').value;
-      const params = [];
-      if (f) params.push('from=' + encodeURIComponent(f));
-      if (t) params.push('to=' + encodeURIComponent(t));
-      const qs = params.length ? '?' + params.join('&') : '';
+    // Build an inline-SVG sparkline from an array of {pct} day points.
+    function renderSpark(target, days, color) {
+      var pts = days.map(function (d) { return d.pct; }).filter(function (p) { return p != null; });
+      if (pts.length < 2) return; // not enough to draw
+      var w = 132, h = 60, pad = 4;
+      var min = Math.min.apply(null, pts), max = Math.max.apply(null, pts);
+      var span = (max - min) || 1;
+      var n = pts.length;
+      var coords = pts.map(function (p, i) {
+        var x = pad + (i * (w - pad * 2)) / (n - 1);
+        var y = pad + (1 - (p - min) / span) * (h - pad * 2 - 2);
+        return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
+      });
+      var line = coords.map(function (c, i) { return (i ? 'L' : 'M') + c[0] + ',' + c[1]; }).join(' ');
+      var area = line + ' L' + coords[n - 1][0] + ',' + (h - pad) + ' L' + coords[0][0] + ',' + (h - pad) + ' Z';
+      var last = coords[n - 1];
+      var gid = 'sparkFill_' + Math.random().toString(36).slice(2, 7);
+      target.innerHTML =
+        '<svg class="spark" width="132" height="60" viewBox="0 0 132 60" aria-hidden="true">' +
+        '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="' + color + '" stop-opacity="0.22"/>' +
+        '<stop offset="100%" stop-color="' + color + '" stop-opacity="0"/></linearGradient></defs>' +
+        '<path d="' + area + '" fill="url(#' + gid + ')"/>' +
+        '<path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+        '<circle cx="' + last[0] + '" cy="' + last[1] + '" r="3.2" fill="' + color + '"/></svg>';
+    }
 
-      const res = await apiFetch('/sales/report' + qs);
+    // ── Sales report → food cost hero, sales card, Z-report banner ─────────
+    async function loadSales() {
+      var res = await apiFetch('/sales/report');
       if (!res) return; // redirected on 401
       if (!res.ok || !res.data || res.data.error) {
-        showToast((res.data && res.data.error) || 'Could not load report', 'error');
+        document.getElementById('fc-value').textContent = '—';
+        document.getElementById('sales-num').textContent = '—';
         return;
       }
-      const d = res.data;
+      var d = res.data;
 
-      // Sync the date inputs with the resolved range.
-      document.getElementById('from').value = d.from;
-      document.getElementById('to').value = d.to;
-
-      const metric = document.getElementById('metric');
-      const stats = document.getElementById('stats');
-      const tableCard = document.getElementById('table-card');
-      const emptyMsg = document.getElementById('empty-msg');
-
-      const fcpEl = document.getElementById('fcp-value');
+      var fcEl = document.getElementById('fc-value');
       if (d.food_cost_pct == null) {
-        fcpEl.textContent = '—';
-        fcpEl.className = 'metric-value';
+        fcEl.textContent = 'No data yet';
+        fcEl.className = 'value';
+        fcEl.style.fontSize = '1.5rem';
+        document.getElementById('fc-target').textContent = 'Add sales to see your food cost %';
       } else {
-        fcpEl.textContent = formatPct(d.food_cost_pct);
-        fcpEl.className = 'metric-value ' + fcpClass(d.food_cost_pct);
+        fcEl.textContent = formatPct(d.food_cost_pct);
+        fcEl.className = 'value ' + fcClass(d.food_cost_pct);
+        renderSpark(document.getElementById('fc-spark'), d.days || [], sparkColor(d.food_cost_pct));
       }
-      metric.style.display = 'block';
 
-      document.getElementById('total-sales').textContent = formatUSD(d.total_sales || 0);
-      document.getElementById('total-cost').textContent = formatUSD(d.total_food_cost || 0);
-      stats.style.display = 'flex';
+      // Sales (range total — labeled as last 30 days)
+      document.getElementById('sales-num').textContent = formatUSD(d.total_sales || 0);
 
-      const rows = document.getElementById('day-rows');
-      rows.innerHTML = '';
-      if (d.days && d.days.length) {
-        emptyMsg.style.display = 'none';
-        tableCard.style.display = 'block';
-        for (const day of d.days) {
-          const tr = document.createElement('tr');
-          const cells = [
-            formatDate(day.report_date),
-            formatUSD(day.net_sales || 0),
-            formatUSD(day.food_cost || 0),
-            day.pct == null ? '—' : formatPct(day.pct),
-          ];
-          cells.forEach((val, i) => {
-            const td = document.createElement('td');
-            td.textContent = val;
-            if (i > 0) td.className = 'num';
-            tr.appendChild(td);
-          });
-          rows.appendChild(tr);
-        }
-      } else {
-        tableCard.style.display = 'none';
-        emptyMsg.style.display = 'block';
-        emptyMsg.textContent = 'No sales entered in this range yet. Add some on the Sales page.';
+      // Z-report reminder: show if no daily_sales row for "yesterday".
+      // We derive "yesterday" from today (local) and check days[] for a match
+      // with net_sales present.
+      var yest = new Date();
+      yest.setDate(yest.getDate() - 1);
+      var yStr = yest.toISOString().slice(0, 10);
+      var has = (d.days || []).some(function (day) {
+        return day.report_date === yStr && day.net_sales != null && day.net_sales > 0;
+      });
+      if (!has) {
+        var lbl = yest.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        document.getElementById('zbanner-sub').textContent =
+          lbl + ' close is missing — food cost % can\'t update without it.';
+        document.getElementById('zbanner').style.display = 'flex';
       }
     }
 
-    document.getElementById('range-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      load();
-    });
+    // ── Invoices → purchases (MTD) + recent list ──────────────────────────
+    function vendorTag(name) {
+      var n = (name || '').replace(/[^A-Za-z]/g, '');
+      return (n.slice(0, 3) || 'INV').toUpperCase();
+    }
+    function invChip(status) {
+      if (status === 'verified' || status === 'paid') return '<span class="chip chip-ok">Approved</span>';
+      return '<span class="chip chip-review">Needs review</span>';
+    }
 
-    load();
+    async function loadInvoices() {
+      var res = await apiFetch('/invoices/list');
+      var body = document.getElementById('recent-body');
+      if (!res) return; // redirected on 401
+      if (!res.ok || !res.data || res.data.error) {
+        body.innerHTML = '<div class="coming-soon"><span class="cs-s">Could not load invoices.</span></div>';
+        return;
+      }
+      var invoices = Array.isArray(res.data.invoices) ? res.data.invoices : [];
+
+      // Purchases MTD: sum total_amount for invoices dated this calendar month.
+      var now = new Date();
+      var ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+      var mtdTotal = 0, mtdCount = 0;
+      invoices.forEach(function (inv) {
+        var d = inv.invoice_date || inv.created_at || '';
+        if (typeof d === 'string' && d.slice(0, 7) === ym) {
+          mtdTotal += Number(inv.total_amount) || 0;
+          mtdCount += 1;
+        }
+      });
+      document.getElementById('purch-num').textContent = formatUSD(mtdTotal);
+      document.getElementById('purch-sub').textContent =
+        mtdCount + ' invoice' + (mtdCount === 1 ? '' : 's') + ' · this month';
+
+      // Recent invoices (top 4)
+      if (!invoices.length) {
+        body.innerHTML = '<div class="coming-soon"><span class="cs-s">No invoices yet. Tap Scan to add your first.</span></div>';
+        return;
+      }
+      var top = invoices.slice(0, 4);
+      body.innerHTML = top.map(function (inv) {
+        var sub = formatDate(inv.invoice_date || inv.created_at) +
+          (inv.invoice_number ? ' · #' + esc(inv.invoice_number) : '');
+        return '<div class="inv-row" data-id="' + esc(inv.id) + '">' +
+          '<span class="inv-logo">' + esc(vendorTag(inv.vendor_name)) + '</span>' +
+          '<span class="inv-body"><span class="inv-t">' + esc(inv.vendor_name || 'Invoice') + '</span>' +
+          '<span class="inv-s">' + sub + '</span></span>' +
+          '<span class="inv-right"><span class="inv-total">' +
+          (inv.total_amount != null ? formatUSD(inv.total_amount) : '—') + '</span>' +
+          invChip(inv.status) + '</span>' +
+          '<button class="kebab" type="button" aria-label="Invoice actions" data-kebab>' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>' +
+          '</button></div>';
+      }).join('');
+
+      // Row → invoice detail (the whole card is a link to /invoices.html, so
+      // intercept row clicks for per-invoice navigation).
+      body.querySelectorAll('.inv-row').forEach(function (row) {
+        row.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var kb = e.target.closest('[data-kebab]');
+          if (kb) { showToast('Coming soon', 'info'); return; }
+          window.location.href = '/invoice.html?id=' + encodeURIComponent(row.getAttribute('data-id'));
+        });
+      });
+    }
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
+    }
+
+    loadSales().catch(function () {});
+    loadInvoices().catch(function () {});
   </script>
-  <footer class="site-footer">
-    <a href="/privacy.html">Privacy</a>
-    <span aria-hidden="true">·</span>
-    <a href="/terms.html">Terms</a>
-  </footer>
 </body>
 </html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Market — Reverto</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-body">
+  <div class="app-frame">
+  <main class="app-content">
+    <h1 class="greeting">Market</h1>
+    <p class="greeting-sub">USDA market-price benchmarks for your ingredients.</p>
+    <div class="cs-page">
+      <div class="card-link">
+        <div class="coming-soon">
+          <span class="cs-ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/></svg></span>
+          <span class="cs-t">Market benchmarks <span class="cs-pill">COMING SOON</span></span>
+          <span class="cs-s">A standalone view comparing your purchase prices against USDA market data is on the way. You can already see per-invoice market comparisons on each invoice's detail page.</span>
+        </div>
+      </div>
+    </div>
+  </main>
+  </div>
+
+  <script src="/js/db.js?v=2"></script>
+  <script src="/js/shell.js?v=1"></script>
+  <script>
+    if (!Auth.requireAuth()) throw new Error('redirect');
+    Shell.mount(document.querySelector('.app-frame'), 'market');
+  </script>
+</body>
+</html>

@@ -6,26 +6,11 @@
   <title>Reverto</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
-  <div class="appbar">
-    <span class="brand">Reverto</span>
-    <span class="user-info">
-      <span id="user-name"></span>
-      <a href="#" id="logout-link">Log out</a>
-    </span>
-  </div>
-
-  <nav class="appnav">
-    <a href="/app.html" class="active">Upload</a>
-    <a href="/invoices.html">Invoices</a>
-    <a href="/sales.html">Sales</a>
-    <a href="/dashboard.html">Dashboard</a>
-    <a href="/account.html">Account</a>
-  </nav>
-
-  <div class="container">
+<body class="app-body">
+  <div class="app-frame">
+  <main class="app-content">
     <div class="card">
-      <h2>Upload an invoice</h2>
+      <h2>Scan an invoice</h2>
       <p class="muted">Take a photo of a Sysco invoice (or upload a PDF) and we'll parse it
         automatically.</p>
 
@@ -44,19 +29,14 @@
 
       <div id="result-box" class="result-box" style="display:none;"></div>
     </div>
+  </main>
   </div>
 
   <script src="/js/db.js?v=2"></script>
+  <script src="/js/shell.js?v=1"></script>
   <script>
     Auth.requireAuth();
-
-    document.getElementById('user-name').textContent = Auth.name() || '';
-
-    document.getElementById('logout-link').addEventListener('click', (e) => {
-      e.preventDefault();
-      Auth.clear();
-      window.location.href = '/login.html';
-    });
+    Shell.mount(document.querySelector('.app-frame'), 'scan');
 
     const form = document.getElementById('upload-form');
     const fileInput = document.getElementById('invoice-file');
@@ -150,10 +130,5 @@
       }
     });
   </script>
-  <footer class="site-footer">
-    <a href="/privacy.html">Privacy</a>
-    <span aria-hidden="true">·</span>
-    <a href="/terms.html">Terms</a>
-  </footer>
 </body>
 </html>

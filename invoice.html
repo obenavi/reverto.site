@@ -9,7 +9,7 @@
     .container-wide {
       max-width: 900px;
       margin: 0 auto;
-      padding: 24px 16px;
+      padding: 18px 16px calc(var(--nav-h) + 44px);
     }
 
     .invoice-meta {
@@ -313,25 +313,10 @@
     .stat-value-ok    { color: #22c55e; font-weight: 700; }
   </style>
 </head>
-<body>
-  <div class="appbar">
-    <span class="brand">Reverto</span>
-    <span class="user-info">
-      <span id="user-name"></span>
-      <a href="#" id="logout-link">Log out</a>
-    </span>
-  </div>
-
-  <nav class="appnav">
-    <a href="/app.html">Upload</a>
-    <a href="/invoices.html" class="active">Invoices</a>
-    <a href="/sales.html">Sales</a>
-    <a href="/dashboard.html">Dashboard</a>
-    <a href="/account.html">Account</a>
-  </nav>
-
-  <div class="container-wide">
-    <a href="/app.html" class="back-link">&#8592; Upload another invoice</a>
+<body class="app-body">
+  <div class="app-frame wide">
+  <main class="app-content container-wide">
+    <a href="/invoices.html" class="back-link">&#8592; All invoices</a>
 
     <!-- Loading state -->
     <div id="loading-state" class="state-block">
@@ -430,18 +415,14 @@
       </div>
 
     </div>
+  </main>
   </div>
 
   <script src="/js/db.js?v=2"></script>
+  <script src="/js/shell.js?v=1"></script>
   <script>
     if (!Auth.requireAuth()) throw new Error('redirect');
-
-    document.getElementById('user-name').textContent = Auth.name() || '';
-    document.getElementById('logout-link').addEventListener('click', (e) => {
-      e.preventDefault();
-      Auth.clear();
-      window.location.href = '/login.html';
-    });
+    Shell.mount(document.querySelector('.app-frame'), 'dashboard');
 
     function catClass(category) {
       const c = (category || 'other').toLowerCase();
@@ -689,10 +670,5 @@
       showError('Failed to load invoice. Please try again.');
     });
   </script>
-  <footer class="site-footer">
-    <a href="/privacy.html">Privacy</a>
-    <span aria-hidden="true">·</span>
-    <a href="/terms.html">Terms</a>
-  </footer>
 </body>
 </html>
