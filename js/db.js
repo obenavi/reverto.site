@@ -94,7 +94,10 @@ function formatPct(n) {
 
 function formatDate(d) {
   if (!d) return '—';
-  const dt = new Date(d + 'T12:00:00');
+  // Date-only strings (YYYY-MM-DD) get a noon time to avoid TZ rollback;
+  // full ISO timestamps (e.g. created_at) are parsed as-is.
+  const dt = /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(d + 'T12:00:00') : new Date(d);
+  if (isNaN(dt.getTime())) return '—';
   return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
