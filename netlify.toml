@@ -179,6 +179,28 @@
   status = 200
 
 [[redirects]]
+  from = "/recipes/list"
+  to = "/.netlify/functions/recipes/list"
+  status = 200
+
+[[redirects]]
+  from = "/recipes/save"
+  to = "/.netlify/functions/recipes/save"
+  status = 200
+
+[[redirects]]
+  from = "/recipes/delete"
+  to = "/.netlify/functions/recipes/delete"
+  status = 200
+
+[[redirects]]
+  from = "/recipes/ingredient-cost"
+  to = "/.netlify/functions/recipes/ingredient-cost"
+  status = 200
+
+# Page route — MUST stay after the /recipes/* function routes above so it
+# doesn't shadow them (Netlify matches top-down).
+[[redirects]]
   from = "/recipes"
   to = "/recipes.html"
   status = 200

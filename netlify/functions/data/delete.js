@@ -117,6 +117,11 @@ exports.handler = async (event) => {
     await del(`item_master?business_id=eq.${biz}`);
     await del(`subscriptions?business_id=eq.${biz}`);
     if (userIds.length) await del(`push_subscriptions?user_id=in.(${userIds.join(',')})`);
+    // Recipe costing rows carry business_id but have no businesses FK cascade, so
+    // delete them explicitly before the business row. recipe_ingredients has a
+    // recipe_id FK ON DELETE CASCADE, but we delete it first as belt-and-suspenders.
+    await del(`recipe_ingredients?business_id=eq.${biz}`);
+    await del(`recipes?business_id=eq.${biz}`);
     await del(`users?business_id=eq.${biz}`);
     await del(`businesses?id=eq.${biz}`);
 

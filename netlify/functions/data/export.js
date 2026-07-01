@@ -76,6 +76,10 @@ exports.handler = async (event) => {
     const suppliers = await getJson(H, `${B}/suppliers?business_id=eq.${biz}&select=*`);
     const item_master = await getJson(H, `${B}/item_master?business_id=eq.${biz}&select=*`);
 
+    // Recipe costing (BOM) data for this business.
+    const recipes = await getJson(H, `${B}/recipes?business_id=eq.${biz}&select=*`);
+    const recipe_ingredients = await getJson(H, `${B}/recipe_ingredients?business_id=eq.${biz}&select=*`);
+
     const exportPayload = {
       export_generated_at: new Date().toISOString(),
       business_id: biz,
@@ -88,6 +92,8 @@ exports.handler = async (event) => {
       locations,
       suppliers,
       item_master,
+      recipes,
+      recipe_ingredients,
     };
 
     return {
