@@ -102,6 +102,11 @@
   status = 200
 
 [[redirects]]
+  from = "/payments/forecast"
+  to = "/.netlify/functions/payments/forecast"
+  status = 200
+
+[[redirects]]
   from = "/dashboard"
   to = "/dashboard.html"
   status = 200

@@ -18,6 +18,24 @@
     .alert-row .ar-pct { font-weight: 800; font-size: 0.95rem; white-space: nowrap; }
     .alert-row .ar-pct.up { color: #b91c1c; }
     .alert-row .ar-pct.down { color: #15803d; }
+
+    /* Payments & vendor spend (matches prototype-dashboard.html) */
+    #pay-headline { font-weight: 800; color: var(--color-text); }
+    .pay-row { display: flex; align-items: baseline; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--color-border); font-size: 0.82rem; }
+    .pay-row:last-child { border-bottom: none; }
+    .pay-row .pr-body { flex: 1; min-width: 0; }
+    .pay-row .pr-t { font-weight: 700; }
+    .pay-row .pr-s { font-size: 0.72rem; color: var(--color-muted); }
+    .pay-row .pr-s .assumed { font-style: italic; opacity: 0.75; }
+    .pay-row .pr-amt { font-weight: 800; white-space: nowrap; }
+    .pay-row .pr-due { white-space: nowrap; font-weight: 700; color: var(--color-muted); }
+    .pay-row .pr-due.overdue { color: #b91c1c; }
+    .pay-flex { display: flex; gap: 14px; align-items: center; margin-top: 12px; }
+    .donut-legend { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+    .leg-item { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
+    .leg-swatch { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+    .leg-name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .leg-val { font-weight: 700; white-space: nowrap; }
   </style>
 </head>
 <body class="app-body">
@@ -102,15 +120,14 @@
         </div>
       </a>
 
-      <!-- 7. PAYMENTS & VENDOR SPEND (no backend yet → coming soon) -->
+      <!-- 7. PAYMENTS & VENDOR SPEND (real data) -->
       <div class="card-link" style="cursor:default">
         <div class="card-head">
           <span class="card-title">Payments &amp; vendor spend</span>
+          <span class="view" id="pay-headline"></span>
         </div>
-        <div class="coming-soon">
-          <span class="cs-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span>
-          <span class="cs-t">Payments &amp; vendor spend <span class="cs-pill">COMING SOON</span></span>
-          <span class="cs-s">Upcoming payments by vendor and a spend breakdown are on the way.</span>
+        <div id="pay-body">
+          <div class="coming-soon"><span class="cs-s">Loading…</span></div>
         </div>
       </div>
 
@@ -326,9 +343,160 @@
       }).join('');
     }
 
+    // ── Payments & vendor spend ───────────────────────────────────────────
+    var DONUT_COLORS = ['#7c3aed', '#db2777', '#a78bfa', '#fbcfe8', '#c4b5fd'];
+
+    function termsLabel(t) {
+      var map = { net7: 'Net 7', net15: 'Net 15', net30: 'Net 30', net60: 'Net 60', ewa: 'EWA', cod: 'COD', prepaid: 'Prepaid' };
+      return map[t] || t;
+    }
+    function dueLabel(days) {
+      if (days < 0) return 'overdue ' + Math.abs(days) + 'd';
+      if (days === 0) return 'due today';
+      if (days === 1) return 'due tomorrow';
+      return 'due in ' + days + ' days';
+    }
+
+    function compactUSD(n) {
+      var v = Number(n) || 0;
+      if (v >= 1000) return '$' + (v / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+      return formatUSD(v);
+    }
+
+    function renderDonut(vendorSpend, total) {
+      // Top 4 vendors + an "Other" bucket. Build stroke-dasharray segments on a
+      // 100-circumference circle (r = 15.9155). offset walks backward per segment.
+      var top = vendorSpend.slice(0, 4);
+      var restTotal = vendorSpend.slice(4).reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0);
+      var segs = top.map(function (v, i) {
+        return { name: v.vendor_name, total: Number(v.total) || 0, color: DONUT_COLORS[i] };
+      });
+      if (restTotal > 0) segs.push({ name: 'Other', total: restTotal, color: DONUT_COLORS[4] });
+
+      var denom = total > 0 ? total : 1;
+      var offset = 25; // start at 12 o'clock
+      var circles = '<circle cx="21" cy="21" r="15.9155" fill="none" stroke="#eee" stroke-width="7"/>';
+      segs.forEach(function (s) {
+        var pct = Math.max(0, Math.round((s.total / denom) * 1000) / 10);
+        var gap = Math.round((100 - pct) * 10) / 10;
+        circles += '<circle cx="21" cy="21" r="15.9155" fill="none" stroke="' + s.color +
+          '" stroke-width="7" stroke-dasharray="' + pct + ' ' + gap +
+          '" stroke-dashoffset="' + offset + '"/>';
+        offset = Math.round((offset - pct) * 10) / 10;
+      });
+
+      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', '96'); svg.setAttribute('height', '96');
+      svg.setAttribute('viewBox', '0 0 42 42'); svg.setAttribute('aria-hidden', 'true');
+      svg.style.flexShrink = '0';
+      svg.innerHTML = circles +
+        '<text x="21" y="20.5" text-anchor="middle" font-size="6" font-weight="800" fill="#1a1025">' + esc(compactUSD(total)) + '</text>' +
+        '<text x="21" y="26" text-anchor="middle" font-size="3.4" fill="#6b7280">this month</text>';
+
+      var legend = document.createElement('div');
+      legend.className = 'donut-legend';
+      segs.forEach(function (s) {
+        var row = document.createElement('span');
+        row.className = 'leg-item';
+        var sw = document.createElement('span');
+        sw.className = 'leg-swatch'; sw.style.background = s.color;
+        var nm = document.createElement('span');
+        nm.className = 'leg-name'; nm.textContent = s.name;
+        var val = document.createElement('span');
+        val.className = 'leg-val'; val.textContent = compactUSD(s.total);
+        row.appendChild(sw); row.appendChild(nm); row.appendChild(val);
+        legend.appendChild(row);
+      });
+
+      var flex = document.createElement('div');
+      flex.className = 'pay-flex';
+      flex.appendChild(svg);
+      flex.appendChild(legend);
+      return flex;
+    }
+
+    async function loadPayments() {
+      var body = document.getElementById('pay-body');
+      var headline = document.getElementById('pay-headline');
+      var res = await apiFetch('/payments/forecast');
+      if (!res) return; // redirected on 401
+      if (!res.ok || !res.data || res.data.error) {
+        body.innerHTML = '<div class="coming-soon"><span class="cs-s">Could not load payments.</span></div>';
+        return;
+      }
+      var d = res.data;
+      var upcoming = Array.isArray(d.upcoming) ? d.upcoming : [];
+      var spend = Array.isArray(d.vendor_spend) ? d.vendor_spend : [];
+
+      // No invoices at all → friendly prompt.
+      if (!upcoming.length && !spend.length && !(Number(d.total_owed) > 0)) {
+        headline.textContent = '';
+        body.innerHTML = '<div class="coming-soon"><span class="cs-s">Scan invoices and add vendor payment terms to see upcoming payments here.</span></div>';
+        return;
+      }
+
+      body.textContent = '';
+
+      // Headline: total owed.
+      if (Number(d.total_owed) > 0) {
+        headline.textContent = formatUSD(d.total_owed) + ' owed';
+      } else {
+        headline.textContent = '';
+      }
+
+      // Upcoming payment rows (top 4). Empty → "No payments due".
+      if (!upcoming.length) {
+        var none = document.createElement('div');
+        none.className = 'coming-soon';
+        none.innerHTML = '<span class="cs-s">No payments due.</span>';
+        body.appendChild(none);
+      } else {
+        upcoming.slice(0, 4).forEach(function (p) {
+          var row = document.createElement('div');
+          row.className = 'pay-row';
+
+          var col = document.createElement('div');
+          col.className = 'pr-body';
+          var t = document.createElement('div');
+          t.className = 'pr-t';
+          t.textContent = p.vendor_name || 'Vendor';
+          var s = document.createElement('div');
+          s.className = 'pr-s';
+          var parts = termsLabel(p.terms);
+          if (p.invoice_number) parts += ' · #' + p.invoice_number;
+          s.textContent = parts;
+          if (p.assumed) {
+            s.appendChild(document.createTextNode(' '));
+            var a = document.createElement('span');
+            a.className = 'assumed';
+            a.textContent = '(assumed terms)';
+            s.appendChild(a);
+          }
+          col.appendChild(t); col.appendChild(s);
+
+          var amt = document.createElement('span');
+          amt.className = 'pr-amt';
+          amt.textContent = formatUSD(p.amount);
+
+          var due = document.createElement('span');
+          due.className = 'pr-due' + (p.days_until_due < 0 ? ' overdue' : '');
+          due.textContent = dueLabel(p.days_until_due);
+
+          row.appendChild(col); row.appendChild(amt); row.appendChild(due);
+          body.appendChild(row);
+        });
+      }
+
+      // Vendor-spend donut (current month).
+      if (spend.length && Number(d.total_spend_month) > 0) {
+        body.appendChild(renderDonut(spend, Number(d.total_spend_month) || 0));
+      }
+    }
+
     loadSales().catch(function () {});
     loadInvoices().catch(function () {});
     loadAlerts().catch(function () {});
+    loadPayments().catch(function () {});
   </script>
 </body>
 </html>
