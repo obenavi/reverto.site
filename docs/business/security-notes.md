@@ -202,3 +202,79 @@ issue (it only ever touches this tenant's recorded paths), but note residual-dat
 typed-DELETE confirmation, but a stolen/leaked token can wipe an account. Reconfirm before Stripe.
 
 Not a substitute for a professional pentest before handling payment data.
+
+### 2026-07-01 — Five new feature areas (alerts, vendors, payments, invoice approve/issue, market prices, recipes) + data export/delete re-check
+
+Branch `claude/elegant-albattani-l650n4` (auto-deploys to prod). Reviewed for multi-tenant
+isolation + info disclosure. Files: `alerts/price-changes.js`, `vendors/list.js`, `vendors/save.js`,
+`payments/forecast.js`, `invoices/approve.js`, `invoices/issue.js`, `market/prices.js`,
+`recipes/list.js`, `recipes/save.js`, `recipes/delete.js`, `recipes/ingredient-cost.js`,
+`data/export.js`, `data/delete.js`, `netlify.toml`, `*.html`.
+
+**Overall: code-level tenant scoping is solid across all 13 functions.** Every one uses the hardened
+`verifyJwt` (byte-identical: alg=HS256 assert, timing-safe compare, exp check, try/catch) and the
+`SUPABASE_URL` normalization from `invoices/list.js`. `business_id` is taken only from the JWT, never
+from client input. All errors are generic; raw Supabase bodies/stacks are console-logged only. No
+client-supplied `business_id` anywhere in the HTML. netlify.toml orders function routes before page
+routes (no shadowing).
+
+CRITICAL — must verify before relying on it (could not be machine-checked this session)
+- RLS/grants on the THREE NEW tables `invoice_issues`, `recipes`, `recipe_ingredients` are UNVERIFIED.
+  They are NOT in the checked-in `docs/schema.sql` and were created ad-hoc against the live project,
+  so they were NOT covered by the `enable_rls_lockdown` migration (2026-06-28) that locked down the
+  original tables. Supabase MCP tools were again not reachable in this session. IF any of these three
+  tables has RLS OFF or retains anon/authenticated SELECT grants, the project URL + public anon key
+  give any internet user full cross-tenant read of every restaurant's reported invoice issues (incl.
+  dollar amounts) and full recipe/BOM + costing data. FIX (founder, via migration): for each of
+  `invoice_issues`, `recipes`, `recipe_ingredients` run `ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`
+  and `REVOKE ALL ON ... FROM anon, authenticated;`, then confirm `rls_on=true`,
+  `anon_select=false`, `anon_insert=false` (same check used for the base tables). service_role keeps
+  the functions working. Until confirmed, treat as the top open risk.
+- Also confirm the FK/cascade assumptions the code now depends on exist in the LIVE schema:
+  `invoice_issues.invoice_id -> invoices(id) ON DELETE CASCADE`,
+  `recipe_ingredients.recipe_id -> recipes(id) ON DELETE CASCADE`. If the cascades are absent, the
+  belt-and-suspenders explicit deletes in `data/delete.js` still cover it (see below), but
+  `recipes/delete.js` relies on the recipe_ingredients cascade and would orphan ingredient rows.
+
+Cross-tenant access — verified clean
+- `alerts/price-changes.js` and `recipes/ingredient-cost.js`: `invoice_items` has no business_id, so
+  both scope by fetching this business's invoices (business_id=eq.JWT) and building the
+  `invoice_id in.(...)` list from those owned ids only, each `encodeURIComponent`-escaped. A crafted
+  invoice_id cannot enter the list. Correct pattern.
+- `recipes/list.js`: both the `recipe_id in.(...)` and single-id paths ALSO carry
+  `&business_id=eq.<jwt>`, and `recipe_ingredients` itself is filtered by business_id — belt AND
+  suspenders, not reliant on the join alone. Good.
+- `recipes/save.js`: update path PATCHes `recipes?id=eq.<client>&business_id=eq.<jwt>` and treats an
+  empty 2xx array as 404; ingredient delete + insert are stamped/filtered with business_id. Create
+  path stamps business_id from JWT. Cannot edit another tenant's recipe.
+- `recipes/delete.js`: DELETE scoped by id + business_id, empty array => 404. Good.
+- `vendors/save.js`: update scoped by id + business_id (empty => 404); create stamps business_id.
+- `invoices/approve.js` / `invoices/issue.js`: both do a business_id-scoped ownership SELECT on the
+  invoice FIRST, then the write is itself business_id-scoped (approve PATCH) or stamps business_id +
+  verified invoice_id (issue INSERT). Note: `issue.js` accepts `invoice_item_id` without verifying it
+  belongs to the invoice — LOW risk (it is only stored as context, never used to read cross-tenant
+  data, and the parent invoice ownership is verified). Recommend later: verify the item_id belongs to
+  the invoice for data integrity.
+
+market/prices.js — correct
+- `usda_prices` intentionally global/un-scoped; still behind a valid-JWT gate. Table holds only USDA
+  commodity/price/date columns — no PII, no business_id. This is the ONLY un-scoped query and it is
+  appropriate. (Same table read un-scoped in `invoices/list.js` USDA lookup — also fine.)
+
+Injection — clean
+- `ingredient-cost.js` name param: built as `description=ilike.<encodeURIComponent('*'+name+'*')>` —
+  user wildcards are encoded, so no PostgREST filter breakout; worst case a broad/narrow match. OK.
+- All `in.(...)` id lists are our own UUIDs, encodeURIComponent'd. UUID `eq.` filter values are not
+  injectable.
+
+data/export.js + data/delete.js — parallel edits landed cleanly, nothing clobbered
+- export.js now also returns `invoice_issues` (business_id-scoped), `recipes`, `recipe_ingredients`
+  (both business_id-scoped). `invoice_items` still joined via owned invoice ids only. `password_hash`
+  still excluded via explicit user column list. Good.
+- delete.js delete order is FK-safe and now includes `invoice_issues` (before invoices),
+  `recipe_ingredients` then `recipes` (before users/businesses). Explicit deletes act as
+  belt-and-suspenders even if the live cascades differ. The prior-review audit_log/subscriptions FK
+  concern still applies — verify live FK rules on the businesses delete before trusting a clean wipe.
+
+Not a substitute for a professional pentest before handling payment data (Stripe). The one hard
+blocker to close now is the RLS/grants verification on the three new tables.
