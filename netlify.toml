@@ -149,7 +149,13 @@
   to = "/account.html"
   status = 200
 
-# New shell page routes (placeholder pages reachable from the bottom nav).
+[[redirects]]
+  from = "/market/prices"
+  to = "/.netlify/functions/market/prices"
+  status = 200
+
+# Page route — MUST stay after the /market/* function route above so it does
+# not shadow it (Netlify matches top-down).
 [[redirects]]
   from = "/market"
   to = "/market.html"

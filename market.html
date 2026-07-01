@@ -3,22 +3,66 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Market — Reverto</title>
+  <title>Market Prices — Reverto</title>
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .market-note {
+      font-size: 0.85rem;
+      color: var(--color-muted);
+      line-height: 1.5;
+      margin: 4px 0 16px;
+    }
+    .as-of {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #7c3aed;
+    }
+    .data-table td.range { color: var(--color-muted); }
+    .state-block {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--color-muted);
+    }
+    .state-block .spinner { width: 24px; height: 24px; margin: 0 auto 12px; }
+  </style>
 </head>
 <body class="app-body">
   <div class="app-frame">
   <main class="app-content">
-    <h1 class="greeting">Market</h1>
-    <p class="greeting-sub">USDA market-price benchmarks for your ingredients.</p>
-    <div class="cs-page">
-      <div class="card-link">
-        <div class="coming-soon">
-          <span class="cs-ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/></svg></span>
-          <span class="cs-t">Market benchmarks <span class="cs-pill">COMING SOON</span></span>
-          <span class="cs-s">A standalone view comparing your purchase prices against USDA market data is on the way. You can already see per-invoice market comparisons on each invoice's detail page.</span>
-        </div>
+    <h1 class="greeting">Market Prices</h1>
+    <p class="greeting-sub">Neutral USDA wholesale benchmarks — what we compare your invoice prices against.</p>
+
+    <div class="card">
+      <p id="as-of" class="as-of" style="display:none;"></p>
+
+      <div id="loading-state" class="state-block">
+        <div class="spinner"></div>
+        <div>Loading market prices...</div>
       </div>
+
+      <div id="empty-state" class="state-block" style="display:none;">
+        <p>Market prices are syncing — check back soon.</p>
+      </div>
+
+      <div id="table-wrap" style="display:none;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Commodity</th>
+              <th class="num">Avg price</th>
+              <th class="num">Low–High</th>
+              <th>Reported</th>
+            </tr>
+          </thead>
+          <tbody id="price-rows"></tbody>
+        </table>
+      </div>
+
+      <p class="market-note">
+        Prices are published by the USDA Agricultural Marketing Service (AMS) and refreshed regularly.
+        This v1 benchmark is USDA-only (no peer or distributor data yet). Per-item comparisons against
+        these prices appear on each invoice's detail page.
+      </p>
     </div>
   </main>
   </div>
@@ -28,6 +72,94 @@
   <script>
     if (!Auth.requireAuth()) throw new Error('redirect');
     Shell.mount(document.querySelector('.app-frame'), 'market');
+
+    // Title-case a raw commodity key like "CHICKEN BREAST" -> "Chicken Breast".
+    function titleCase(s) {
+      return String(s || '')
+        .toLowerCase()
+        .replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function priceWithUnit(value, unit) {
+      if (value == null) return '—';
+      const money = formatUSD(value);
+      return unit ? money + ' / ' + unit : money;
+    }
+
+    function rangeText(low, high, unit) {
+      if (low == null && high == null) return '—';
+      const lo = low != null ? formatUSD(low) : '—';
+      const hi = high != null ? formatUSD(high) : '—';
+      return lo + '–' + hi + (unit ? ' / ' + unit : '');
+    }
+
+    function renderRows(prices) {
+      const tbody = document.getElementById('price-rows');
+      tbody.innerHTML = '';
+      // Sort by commodity (display name) for a stable, alphabetical list.
+      const sorted = prices.slice().sort((a, b) =>
+        titleCase(a.commodity).localeCompare(titleCase(b.commodity)));
+
+      for (const p of sorted) {
+        const tr = document.createElement('tr');
+
+        const tdName = document.createElement('td');
+        tdName.textContent = titleCase(p.commodity);
+        tr.appendChild(tdName);
+
+        const tdAvg = document.createElement('td');
+        tdAvg.className = 'num';
+        tdAvg.textContent = priceWithUnit(p.price_avg, p.unit);
+        tr.appendChild(tdAvg);
+
+        const tdRange = document.createElement('td');
+        tdRange.className = 'num range';
+        tdRange.textContent = rangeText(p.price_low, p.price_high, p.unit);
+        tr.appendChild(tdRange);
+
+        const tdDate = document.createElement('td');
+        tdDate.textContent = p.report_date ? formatDate(p.report_date) : '—';
+        tr.appendChild(tdDate);
+
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function load() {
+      const res = await apiFetch('/market/prices');
+
+      document.getElementById('loading-state').style.display = 'none';
+
+      if (!res) return; // redirected on 401
+      if (!res.ok || !res.data || res.data.error) {
+        showToast((res.data && res.data.error) || 'Could not load market prices', 'error');
+        const ls = document.getElementById('loading-state');
+        ls.style.display = 'block';
+        ls.querySelector('.spinner')?.remove();
+        ls.querySelector('div').textContent = 'Failed to load market prices.';
+        return;
+      }
+
+      const prices = Array.isArray(res.data.prices) ? res.data.prices : [];
+      if (!prices.length) {
+        document.getElementById('empty-state').style.display = 'block';
+        return;
+      }
+
+      if (res.data.as_of) {
+        const el = document.getElementById('as-of');
+        el.textContent = 'USDA data as of ' + formatDate(res.data.as_of);
+        el.style.display = 'block';
+      }
+
+      renderRows(prices);
+      document.getElementById('table-wrap').style.display = 'block';
+    }
+
+    load().catch(() => {
+      document.getElementById('loading-state').style.display = 'none';
+      showToast('Failed to load market prices', 'error');
+    });
   </script>
 </body>
 </html>
