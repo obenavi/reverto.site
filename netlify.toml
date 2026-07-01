@@ -82,6 +82,11 @@
   status = 200
 
 [[redirects]]
+  from = "/alerts/price-changes"
+  to = "/.netlify/functions/alerts/price-changes"
+  status = 200
+
+[[redirects]]
   from = "/sales/save"
   to = "/.netlify/functions/sales/save"
   status = 200

@@ -5,6 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reverto — Dashboard</title>
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* Price-change alerts (matches prototype-dashboard.html) */
+    .alert-row { display: flex; align-items: center; gap: 11px; padding: 10px 0; border-bottom: 1px solid var(--color-border); }
+    .alert-row:last-child { border-bottom: none; padding-bottom: 2px; }
+    .alert-row .ar-ic { width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .ar-up { background: rgba(185,28,28,0.10); color: #b91c1c; }
+    .ar-dn { background: rgba(21,128,61,0.10); color: #15803d; }
+    .alert-row .ar-body { flex: 1; min-width: 0; }
+    .alert-row .ar-t { font-weight: 700; font-size: 0.9rem; }
+    .alert-row .ar-s { font-size: 0.75rem; color: var(--color-muted); }
+    .alert-row .ar-pct { font-weight: 800; font-size: 0.95rem; white-space: nowrap; }
+    .alert-row .ar-pct.up { color: #b91c1c; }
+    .alert-row .ar-pct.down { color: #15803d; }
+  </style>
 </head>
 <body class="app-body">
   <div class="app-frame">
@@ -67,15 +81,13 @@
         </a>
       </div>
 
-      <!-- 5. PRICE-CHANGE ALERTS (no backend yet → coming soon) -->
+      <!-- 5. PRICE-CHANGE ALERTS (real data) -->
       <div class="card-link" style="cursor:default">
         <div class="card-head">
           <span class="card-title">Price-change alerts</span>
         </div>
-        <div class="coming-soon">
-          <span class="cs-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span>
-          <span class="cs-t">Price-change alerts <span class="cs-pill">COMING SOON</span></span>
-          <span class="cs-s">We'll flag items whose unit price rose or fell since your last order.</span>
+        <div id="alerts-body">
+          <div class="coming-soon"><span class="cs-s">Loading…</span></div>
         </div>
       </div>
 
@@ -282,8 +294,41 @@
       });
     }
 
+    // ── Price-change alerts ───────────────────────────────────────────────
+    var UP_ARROW = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>';
+    var DN_ARROW = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>';
+
+    async function loadAlerts() {
+      var body = document.getElementById('alerts-body');
+      var res = await apiFetch('/alerts/price-changes');
+      if (!res) return; // redirected on 401
+      if (!res.ok || !res.data || res.data.error || !Array.isArray(res.data.alerts)) {
+        body.innerHTML = '<div class="coming-soon"><span class="cs-s">Could not load alerts.</span></div>';
+        return;
+      }
+      var alerts = res.data.alerts;
+      if (!alerts.length) {
+        body.innerHTML = '<div class="coming-soon"><span class="cs-s">No price changes yet — we\'ll flag changes once you\'ve bought the same item more than once.</span></div>';
+        return;
+      }
+      body.innerHTML = alerts.slice(0, 4).map(function (a) {
+        var up = a.direction === 'up';
+        var unit = a.basis === 'lb' ? ' / lb' : ' / case';
+        var pct = (a.pct_change > 0 ? '+' : '−') + Math.abs(a.pct_change) + '%';
+        var sub = formatUSD(a.prev_price) + ' → ' + formatUSD(a.curr_price) + unit +
+          (a.vendor_name ? ' · ' + esc(a.vendor_name) : '') + ' · since last order';
+        return '<div class="alert-row">' +
+          '<span class="ar-ic ' + (up ? 'ar-up' : 'ar-dn') + '">' + (up ? UP_ARROW : DN_ARROW) + '</span>' +
+          '<span class="ar-body"><span class="ar-t">' + esc(a.description) + '</span>' +
+          '<span class="ar-s">' + sub + '</span></span>' +
+          '<span class="ar-pct ' + (up ? 'up' : 'down') + '">' + pct + '</span>' +
+          '</div>';
+      }).join('');
+    }
+
     loadSales().catch(function () {});
     loadInvoices().catch(function () {});
+    loadAlerts().catch(function () {});
   </script>
 </body>
 </html>
