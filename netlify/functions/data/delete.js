@@ -107,6 +107,9 @@ exports.handler = async (event) => {
     const usersRes = await fetch(`${B}/users?business_id=eq.${biz}&select=id`, { headers: H });
     const userIds = usersRes.ok ? (await usersRes.json()).map((u) => u.id) : [];
 
+    // invoice_issues also carries business_id; deleting invoices cascades these
+    // (FK ON DELETE CASCADE), but delete explicitly first as belt-and-suspenders.
+    await del(`invoice_issues?business_id=eq.${biz}`);
     await del(`invoices?business_id=eq.${biz}`);
     await del(`daily_sales?business_id=eq.${biz}`);
     await del(`locations?business_id=eq.${biz}`);

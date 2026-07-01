@@ -125,7 +125,7 @@ exports.handler = async (event) => {
   if (!invoice_id) {
     try {
       const listRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/invoices?business_id=eq.${payload.business_id}&select=id,vendor_name,invoice_number,invoice_date,total_amount,status,created_at&order=created_at.desc`,
+        `${SUPABASE_URL}/rest/v1/invoices?business_id=eq.${payload.business_id}&select=id,vendor_name,invoice_number,invoice_date,total_amount,status,approved,created_at&order=created_at.desc`,
         { headers: H }
       );
       if (!listRes.ok) {
@@ -146,7 +146,7 @@ exports.handler = async (event) => {
 
   // Fetch invoice row, scoped by business_id from JWT (never trust client)
   const invRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/invoices?id=eq.${invoice_id}&business_id=eq.${payload.business_id}&select=id,vendor_name,invoice_number,invoice_date,total_amount,status,parsed_at,created_at&limit=1`,
+    `${SUPABASE_URL}/rest/v1/invoices?id=eq.${invoice_id}&business_id=eq.${payload.business_id}&select=id,vendor_name,invoice_number,invoice_date,total_amount,status,approved,approved_at,parsed_at,created_at&limit=1`,
     { headers: H }
   );
   const invRows = invRes.ok ? await invRes.json() : [];
@@ -154,10 +154,18 @@ exports.handler = async (event) => {
 
   // Fetch line items
   const itemsRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/invoice_items?invoice_id=eq.${invoice_id}&select=description,category,pack_size,quantity,unit,unit_price,extended_price,cost_per_lb,cost_per_oz,cost_per_each,fuel_surcharge,split_case_surcharge&order=extended_price.desc`,
+    `${SUPABASE_URL}/rest/v1/invoice_items?invoice_id=eq.${invoice_id}&select=id,description,category,pack_size,quantity,unit,unit_price,extended_price,cost_per_lb,cost_per_oz,cost_per_each,fuel_surcharge,split_case_surcharge&order=extended_price.desc`,
     { headers: H }
   );
   const items = itemsRes.ok ? await itemsRes.json() : [];
+
+  // Fetch reported issues for this invoice (already scoped: invoice ownership
+  // was verified above by the business_id-scoped invoice fetch).
+  const issuesRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/invoice_issues?invoice_id=eq.${invoice_id}&select=id,issue_type,amount,description,status,invoice_item_id,created_at&order=created_at.desc`,
+    { headers: H }
+  );
+  const issues = issuesRes.ok ? await issuesRes.json() : [];
 
   // Look up USDA prices in parallel for all items that match a known commodity.
   // usda_prices is global market data — no business_id filter needed.
@@ -215,6 +223,6 @@ exports.handler = async (event) => {
   return {
     statusCode: 200,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ invoice: invRows[0], items: itemsWithUsda })
+    body: JSON.stringify({ invoice: invRows[0], items: itemsWithUsda, issues })
   };
 };

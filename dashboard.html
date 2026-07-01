@@ -241,7 +241,11 @@
       var n = (name || '').replace(/[^A-Za-z]/g, '');
       return (n.slice(0, 3) || 'INV').toUpperCase();
     }
-    function invChip(status) {
+    function invChip(inv) {
+      // Prefer the explicit approval flag when the list endpoint provides it.
+      if (inv && inv.approved === true) return '<span class="chip chip-ok">Approved</span>';
+      var status = inv && inv.status;
+      if (inv && inv.approved === false) return '<span class="chip chip-review">Needs review</span>';
       if (status === 'verified' || status === 'paid') return '<span class="chip chip-ok">Approved</span>';
       return '<span class="chip chip-review">Needs review</span>';
     }
@@ -286,7 +290,7 @@
           '<span class="inv-s">' + sub + '</span></span>' +
           '<span class="inv-right"><span class="inv-total">' +
           (inv.total_amount != null ? formatUSD(inv.total_amount) : '—') + '</span>' +
-          invChip(inv.status) + '</span>' +
+          invChip(inv) + '</span>' +
           '<button class="kebab" type="button" aria-label="Invoice actions" data-kebab>' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>' +
           '</button></div>';

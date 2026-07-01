@@ -311,6 +311,106 @@
 
     .stat-value-alert { color: #ef4444; font-weight: 700; }
     .stat-value-ok    { color: #22c55e; font-weight: 700; }
+
+    /* Approval + issue workflow */
+    .workflow-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--color-border);
+    }
+    .badge-approved {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .issue-panel {
+      display: none;
+      margin-top: 16px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      background: var(--color-surface);
+      padding: 16px 18px;
+    }
+    .issue-panel.open { display: block; }
+    .issue-panel h3 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+      color: var(--color-primary-dark);
+    }
+    .field-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1 1 180px;
+    }
+    .field label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-muted);
+    }
+    .field select,
+    .field input,
+    .field textarea {
+      font: inherit;
+      padding: 8px 10px;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--color-text);
+    }
+    .field textarea { resize: vertical; min-height: 60px; }
+    .issue-actions { display: flex; gap: 10px; align-items: center; }
+
+    .issues-section { margin-top: 24px; }
+    .issues-section h2 {
+      font-size: 1.05rem;
+      margin: 0 0 12px;
+      color: var(--color-text);
+    }
+    .issue-list { display: flex; flex-direction: column; gap: 10px; }
+    .issue-card {
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      background: var(--color-surface);
+      padding: 12px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      align-items: center;
+    }
+    .issue-chip {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+    .issue-amount { font-weight: 700; color: var(--color-text); }
+    .issue-note { color: var(--color-text); flex: 1 1 100%; font-size: 0.9rem; }
+    .issue-date { color: var(--color-muted); font-size: 0.8rem; }
+    .issue-status {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--color-muted);
+    }
+    .issues-empty { color: var(--color-muted); font-size: 0.85rem; font-style: italic; }
   </style>
 </head>
 <body class="app-body">
@@ -353,6 +453,47 @@
           <div class="meta-item">
             <span class="meta-label">Status</span>
             <span class="meta-value"><span id="inv-status-badge" class="badge"></span></span>
+          </div>
+        </div>
+
+        <div class="workflow-bar">
+          <button type="button" class="btn btn-auto" id="approve-btn" style="display:none;">Approve invoice</button>
+          <span class="badge badge-approved" id="approved-badge" style="display:none;"></span>
+          <button type="button" class="btn btn-secondary btn-auto" id="report-issue-btn">Report an issue</button>
+        </div>
+
+        <div class="issue-panel" id="issue-panel">
+          <h3>Report an issue</h3>
+          <div class="field-row">
+            <div class="field">
+              <label for="issue-type">Issue type</label>
+              <select id="issue-type">
+                <option value="credit">Credit</option>
+                <option value="refund">Refund</option>
+                <option value="damaged">Damaged</option>
+                <option value="not_delivered">Not delivered</option>
+                <option value="wrong_item">Wrong item</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="issue-item">Related item (optional)</label>
+              <select id="issue-item">
+                <option value="">— None —</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="issue-amount">Amount $ (optional)</label>
+              <input type="number" id="issue-amount" step="0.01" min="0" placeholder="0.00">
+            </div>
+          </div>
+          <div class="field">
+            <label for="issue-note">Note (optional)</label>
+            <textarea id="issue-note" placeholder="Describe the issue..."></textarea>
+          </div>
+          <div class="issue-actions" style="margin-top:12px;">
+            <button type="button" class="btn btn-auto" id="issue-submit">Submit issue</button>
+            <button type="button" class="btn btn-secondary btn-auto" id="issue-cancel">Cancel</button>
           </div>
         </div>
       </div>
@@ -412,6 +553,11 @@
           <span class="legend-dot" style="background:#dc2626;"></span> Well above market
         </div>
         <button type="button" class="info-link" id="footer-info-btn">How is market price calculated?</button>
+      </div>
+
+      <div class="issues-section">
+        <h2>Reported issues</h2>
+        <div class="issue-list" id="issue-list"></div>
       </div>
 
     </div>
@@ -611,6 +757,159 @@
     document.getElementById('footer-info-btn')
       .addEventListener('click', (e) => openPopover(e.currentTarget, null));
 
+    // --- Approval + issue workflow state ---------------------------------
+    let currentInvoiceId = null;
+    let currentItems = [];
+
+    const ISSUE_TYPE_LABEL = {
+      credit: 'Credit',
+      refund: 'Refund',
+      damaged: 'Damaged',
+      not_delivered: 'Not delivered',
+      wrong_item: 'Wrong item',
+      other: 'Other',
+    };
+
+    function renderApproval(invoice) {
+      const btn = document.getElementById('approve-btn');
+      const badge = document.getElementById('approved-badge');
+      if (invoice.approved === true) {
+        btn.style.display = 'none';
+        badge.style.display = 'inline-block';
+        const when = invoice.approved_at ? formatDate(invoice.approved_at) : null;
+        badge.textContent = when ? ('✓ Approved · ' + when) : '✓ Approved';
+      } else {
+        badge.style.display = 'none';
+        btn.style.display = 'inline-block';
+      }
+    }
+
+    function populateItemSelect(items) {
+      const sel = document.getElementById('issue-item');
+      // Keep the first "None" option; rebuild the rest safely.
+      while (sel.options.length > 1) sel.remove(1);
+      items.forEach((item) => {
+        if (!item.id) return; // list endpoint may omit ids on some items
+        const opt = document.createElement('option');
+        opt.value = item.id;
+        opt.textContent = item.description || '(unnamed item)';
+        sel.appendChild(opt);
+      });
+    }
+
+    function renderIssues(issues) {
+      const list = document.getElementById('issue-list');
+      list.textContent = '';
+      if (!issues || !issues.length) {
+        const empty = document.createElement('div');
+        empty.className = 'issues-empty';
+        empty.textContent = 'No issues reported.';
+        list.appendChild(empty);
+        return;
+      }
+      issues.forEach((iss) => {
+        const card = document.createElement('div');
+        card.className = 'issue-card';
+
+        const chip = document.createElement('span');
+        chip.className = 'issue-chip';
+        chip.textContent = ISSUE_TYPE_LABEL[iss.issue_type] || iss.issue_type || 'Issue';
+        card.appendChild(chip);
+
+        if (iss.amount != null && iss.amount !== '') {
+          const amt = document.createElement('span');
+          amt.className = 'issue-amount';
+          amt.textContent = formatUSD(iss.amount);
+          card.appendChild(amt);
+        }
+
+        if (iss.status) {
+          const st = document.createElement('span');
+          st.className = 'issue-status';
+          st.textContent = iss.status;
+          card.appendChild(st);
+        }
+
+        const date = document.createElement('span');
+        date.className = 'issue-date';
+        date.textContent = iss.created_at ? formatDate(iss.created_at) : '';
+        card.appendChild(date);
+
+        if (iss.description) {
+          const note = document.createElement('div');
+          note.className = 'issue-note';
+          note.textContent = iss.description;
+          card.appendChild(note);
+        }
+
+        list.appendChild(card);
+      });
+    }
+
+    // Approve button
+    document.getElementById('approve-btn').addEventListener('click', async () => {
+      if (!currentInvoiceId) return;
+      const btn = document.getElementById('approve-btn');
+      btn.disabled = true;
+      const res = await apiFetch('/invoices/approve', {
+        method: 'POST',
+        body: JSON.stringify({ invoice_id: currentInvoiceId }),
+      });
+      btn.disabled = false;
+      if (res && res.ok && res.data && res.data.approved) {
+        renderApproval({ approved: true, approved_at: res.data.approved_at });
+        showToast('Invoice approved', 'success');
+      } else {
+        const msg = (res && res.data && res.data.error) ? res.data.error : 'Could not approve invoice.';
+        showToast(msg, 'error');
+      }
+    });
+
+    // Report-issue panel toggling
+    const issuePanel = document.getElementById('issue-panel');
+    document.getElementById('report-issue-btn').addEventListener('click', () => {
+      issuePanel.classList.toggle('open');
+    });
+    document.getElementById('issue-cancel').addEventListener('click', () => {
+      issuePanel.classList.remove('open');
+    });
+
+    // Submit issue
+    document.getElementById('issue-submit').addEventListener('click', async () => {
+      if (!currentInvoiceId) return;
+      const submitBtn = document.getElementById('issue-submit');
+      const issue_type = document.getElementById('issue-type').value;
+      const amountRaw = document.getElementById('issue-amount').value.trim();
+      const description = document.getElementById('issue-note').value.trim();
+      const invoice_item_id = document.getElementById('issue-item').value || null;
+
+      const payload = { invoice_id: currentInvoiceId, issue_type };
+      if (amountRaw !== '') payload.amount = amountRaw;
+      if (description !== '') payload.description = description;
+      if (invoice_item_id) payload.invoice_item_id = invoice_item_id;
+
+      submitBtn.disabled = true;
+      const res = await apiFetch('/invoices/issue', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      submitBtn.disabled = false;
+
+      if (res && res.ok && res.data && res.data.issue) {
+        showToast('Issue reported', 'success');
+        // Reset form + close panel, then refresh the invoice (and its issues).
+        document.getElementById('issue-amount').value = '';
+        document.getElementById('issue-note').value = '';
+        document.getElementById('issue-item').value = '';
+        document.getElementById('issue-type').value = 'credit';
+        issuePanel.classList.remove('open');
+        loadInvoice().catch(() => {});
+      } else {
+        const msg = (res && res.data && res.data.error) ? res.data.error : 'Could not report issue.';
+        showToast(msg, 'error');
+      }
+    });
+
     async function loadInvoice() {
       const params = new URLSearchParams(window.location.search);
       const id = params.get('id');
@@ -631,6 +930,9 @@
 
       const { invoice } = res.data;
       const items = res.data.items ?? [];
+      const issues = res.data.issues ?? [];
+      currentInvoiceId = invoice.id;
+      currentItems = items;
 
       // Header fields
       document.getElementById('inv-vendor').textContent = invoice.vendor_name || 'Unknown vendor';
@@ -656,6 +958,11 @@
       }
 
       renderItems(items);
+
+      // Approval + issue workflow
+      renderApproval(invoice);
+      populateItemSelect(items);
+      renderIssues(issues);
 
       document.getElementById('invoice-content').style.display = 'block';
     }

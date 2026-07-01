@@ -68,6 +68,9 @@ exports.handler = async (event) => {
       invoice_items = await getJson(H, `${B}/invoice_items?invoice_id=in.(${inList})&select=*`);
     }
 
+    // Reported invoice issues for this business (scoped by business_id).
+    const invoice_issues = await getJson(H, `${B}/invoice_issues?business_id=eq.${biz}&select=*`);
+
     const daily_sales = await getJson(H, `${B}/daily_sales?business_id=eq.${biz}&select=*`);
     const locations = await getJson(H, `${B}/locations?business_id=eq.${biz}&select=*`);
     const suppliers = await getJson(H, `${B}/suppliers?business_id=eq.${biz}&select=*`);
@@ -80,6 +83,7 @@ exports.handler = async (event) => {
       users,
       invoices,
       invoice_items,
+      invoice_issues,
       daily_sales,
       locations,
       suppliers,

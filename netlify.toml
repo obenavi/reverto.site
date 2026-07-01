@@ -74,6 +74,16 @@
   to = "/.netlify/functions/invoices/parse"
   status = 200
 
+[[redirects]]
+  from = "/invoices/approve"
+  to = "/.netlify/functions/invoices/approve"
+  status = 200
+
+[[redirects]]
+  from = "/invoices/issue"
+  to = "/.netlify/functions/invoices/issue"
+  status = 200
+
 # Page route — MUST stay after the /invoices/* function routes above so it
 # doesn't shadow them (Netlify matches top-down).
 [[redirects]]
