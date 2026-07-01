@@ -141,6 +141,18 @@
   status = 200
 
 [[redirects]]
+  from = "/vendors/list"
+  to = "/.netlify/functions/vendors/list"
+  status = 200
+
+[[redirects]]
+  from = "/vendors/save"
+  to = "/.netlify/functions/vendors/save"
+  status = 200
+
+# Page route — MUST stay after the /vendors/* function routes above so it
+# doesn't shadow them (Netlify matches top-down).
+[[redirects]]
   from = "/vendors"
   to = "/vendors.html"
   status = 200

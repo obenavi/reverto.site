@@ -5,21 +5,103 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vendors — Reverto</title>
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .vendor-row {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--color-border);
+    }
+    .vendor-row:last-child { border-bottom: none; }
+    .vendor-main { min-width: 0; }
+    .vendor-name { font-weight: 800; font-size: 1rem; }
+    .vendor-meta { color: var(--color-muted); font-size: 0.85rem; margin-top: 3px; word-break: break-word; }
+    .vendor-terms { margin-top: 6px; }
+    .chip-term { color: #6d28d9; background: rgba(124,58,237,0.12); }
+    .vendor-edit {
+      flex: 0 0 auto; padding: 6px 14px; width: auto; font-size: 0.85rem;
+    }
+    .suggest-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .suggest-item {
+      display: inline-flex; align-items: center; gap: 8px;
+      border: 1px solid var(--color-border); border-radius: 20px;
+      padding: 5px 6px 5px 12px; font-size: 0.85rem; background: var(--color-surface);
+    }
+    .suggest-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .suggest-add {
+      width: auto; padding: 4px 12px; font-size: 0.8rem; border-radius: 16px;
+    }
+    .field select {
+      width: 100%; padding: 12px; font-size: 1rem;
+      border: 1px solid var(--color-border); border-radius: var(--radius);
+      background: var(--color-surface); color: var(--color-text);
+    }
+    .form-actions { display: flex; gap: 10px; margin-top: 4px; }
+    .form-actions .btn { width: auto; flex: 1; }
+    .hidden { display: none; }
+  </style>
 </head>
 <body class="app-body">
   <div class="app-frame">
   <main class="app-content">
     <h1 class="greeting">Vendors</h1>
-    <p class="greeting-sub">Your distributors and supplier relationships.</p>
-    <div class="cs-page">
-      <div class="card-link">
-        <div class="coming-soon">
-          <span class="cs-ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M3 6h11v9H3z"/><path d="M14 9h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/></svg></span>
-          <span class="cs-t">Vendor management <span class="cs-pill">COMING SOON</span></span>
-          <span class="cs-s">Manage your distributors, payment terms, and spend by vendor in one place. Until then, every parsed invoice already tags its vendor.</span>
-        </div>
-      </div>
+    <p class="greeting-sub">Your distributors, payment terms, and rep contacts.</p>
+
+    <div style="margin-bottom:16px;">
+      <button type="button" id="add-vendor-btn" class="btn btn-auto">+ Add vendor</button>
     </div>
+
+    <!-- Add / edit form -->
+    <div class="card hidden" id="vendor-form-card">
+      <h2 id="form-title">Add vendor</h2>
+      <form id="vendor-form">
+        <input type="hidden" id="vendor-id">
+        <div class="field">
+          <label for="v-name">Vendor name</label>
+          <input type="text" id="v-name" maxlength="200" required autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="v-terms">Payment terms</label>
+          <select id="v-terms">
+            <option value="net7">Net 7 days</option>
+            <option value="net15">Net 15 days</option>
+            <option value="net30" selected>Net 30 days</option>
+            <option value="net60">Net 60 days</option>
+            <option value="cod">COD (cash on delivery)</option>
+            <option value="ewa">EWA (electronic weekly)</option>
+            <option value="prepaid">Prepaid</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="v-rep-name">Rep name <span class="muted">optional</span></label>
+          <input type="text" id="v-rep-name" maxlength="200" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="v-rep-phone">Rep phone <span class="muted">optional</span></label>
+          <input type="tel" id="v-rep-phone" maxlength="50" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="v-rep-email">Rep email <span class="muted">optional</span></label>
+          <input type="email" id="v-rep-email" maxlength="200" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="v-notes">Notes <span class="muted">optional</span></label>
+          <input type="text" id="v-notes" maxlength="500" autocomplete="off">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
+          <button type="submit" class="btn" id="save-btn">Save</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Suggestions from invoices -->
+    <div class="card hidden" id="suggest-card">
+      <h2>Vendors seen on your invoices</h2>
+      <p class="muted">Tap Add to create a vendor from a name we found on your parsed invoices.</p>
+      <div class="suggest-list" id="suggest-list"></div>
+    </div>
+
+    <!-- Vendor list -->
+    <div id="vendors-container"></div>
   </main>
   </div>
 
@@ -28,6 +110,153 @@
   <script>
     if (!Auth.requireAuth()) throw new Error('redirect');
     Shell.mount(document.querySelector('.app-frame'), 'vendors');
+
+    const TERM_LABELS = {
+      net7: 'Net 7', net15: 'Net 15', net30: 'Net 30', net60: 'Net 60',
+      cod: 'COD', ewa: 'EWA', prepaid: 'Prepaid'
+    };
+    function termLabel(code) { return TERM_LABELS[code] || (code || '—'); }
+
+    const container = document.getElementById('vendors-container');
+    const formCard = document.getElementById('vendor-form-card');
+    const suggestCard = document.getElementById('suggest-card');
+    const suggestList = document.getElementById('suggest-list');
+    const form = document.getElementById('vendor-form');
+    const saveBtn = document.getElementById('save-btn');
+    const formTitle = document.getElementById('form-title');
+
+    function el(tag, cls, text) {
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (text != null) n.textContent = text;
+      return n;
+    }
+
+    function openForm(vendor) {
+      form.reset();
+      document.getElementById('vendor-id').value = vendor && vendor.id ? vendor.id : '';
+      document.getElementById('v-name').value = vendor && vendor.name ? vendor.name : '';
+      document.getElementById('v-terms').value = (vendor && vendor.payment_terms) || 'net30';
+      document.getElementById('v-rep-name').value = (vendor && vendor.rep_name) || '';
+      document.getElementById('v-rep-phone').value = (vendor && vendor.rep_phone) || '';
+      document.getElementById('v-rep-email').value = (vendor && vendor.rep_email) || '';
+      document.getElementById('v-notes').value = (vendor && vendor.notes) || '';
+      formTitle.textContent = vendor && vendor.id ? 'Edit vendor' : 'Add vendor';
+      formCard.classList.remove('hidden');
+      formCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      document.getElementById('v-name').focus();
+    }
+    function closeForm() { formCard.classList.add('hidden'); form.reset(); }
+
+    document.getElementById('add-vendor-btn').addEventListener('click', () => openForm(null));
+    document.getElementById('cancel-btn').addEventListener('click', closeForm);
+
+    function renderVendors(vendors) {
+      container.innerHTML = '';
+      if (!vendors.length) {
+        const card = el('div', 'card');
+        card.appendChild(el('h2', null, 'No vendors yet'));
+        card.appendChild(el('p', 'muted',
+          'Add your distributors to track payment terms and rep contacts. This powers the upcoming payment forecast.'));
+        const b = el('button', 'btn btn-auto', '+ Add your first vendor');
+        b.type = 'button';
+        b.addEventListener('click', () => openForm(null));
+        card.appendChild(b);
+        container.appendChild(card);
+        return;
+      }
+      const card = el('div', 'card');
+      card.appendChild(el('h2', null, 'Your vendors'));
+      vendors.forEach(v => {
+        const row = el('div', 'vendor-row');
+        const main = el('div', 'vendor-main');
+        main.appendChild(el('div', 'vendor-name', v.name || '—'));
+
+        const contactBits = [];
+        if (v.rep_name) contactBits.push(v.rep_name);
+        if (v.rep_phone) contactBits.push(v.rep_phone);
+        if (v.rep_email) contactBits.push(v.rep_email);
+        if (contactBits.length) main.appendChild(el('div', 'vendor-meta', contactBits.join(' · ')));
+
+        const termsWrap = el('div', 'vendor-terms');
+        termsWrap.appendChild(el('span', 'chip chip-term', termLabel(v.payment_terms)));
+        main.appendChild(termsWrap);
+        row.appendChild(main);
+
+        const edit = el('button', 'btn btn-secondary vendor-edit', 'Edit');
+        edit.type = 'button';
+        edit.addEventListener('click', () => openForm(v));
+        row.appendChild(edit);
+
+        card.appendChild(row);
+      });
+      container.appendChild(card);
+    }
+
+    function renderSuggestions(names) {
+      suggestList.innerHTML = '';
+      if (!names || !names.length) { suggestCard.classList.add('hidden'); return; }
+      names.forEach(name => {
+        const item = el('div', 'suggest-item');
+        item.appendChild(el('span', 'suggest-name', name));
+        const b = el('button', 'btn suggest-add', 'Add');
+        b.type = 'button';
+        b.addEventListener('click', () => openForm({ name: name, payment_terms: 'net30' }));
+        item.appendChild(b);
+        suggestList.appendChild(item);
+      });
+      suggestCard.classList.remove('hidden');
+    }
+
+    async function load() {
+      const res = await apiFetch('/vendors/list');
+      if (!res) return; // redirected on 401
+      if (!res.ok || !res.data || !Array.isArray(res.data.vendors)) {
+        showToast((res.data && res.data.error) || 'Could not load vendors', 'error');
+        renderVendors([]);
+        return;
+      }
+      renderVendors(res.data.vendors);
+      renderSuggestions(res.data.suggested_from_invoices || []);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('v-name').value.trim();
+      if (!name) { showToast('Vendor name is required', 'error'); return; }
+
+      const payload = {
+        id: document.getElementById('vendor-id').value || undefined,
+        name,
+        payment_terms: document.getElementById('v-terms').value,
+        rep_name: document.getElementById('v-rep-name').value.trim() || undefined,
+        rep_phone: document.getElementById('v-rep-phone').value.trim() || undefined,
+        rep_email: document.getElementById('v-rep-email').value.trim() || undefined,
+        notes: document.getElementById('v-notes').value.trim() || undefined,
+      };
+
+      saveBtn.disabled = true;
+      try {
+        const res = await apiFetch('/vendors/save', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        if (!res) return; // redirected on 401
+        if (res.ok && res.data && res.data.saved) {
+          showToast('Vendor saved', 'success');
+          closeForm();
+          await load();
+        } else {
+          showToast((res.data && res.data.error) || 'Could not save vendor', 'error');
+        }
+      } catch (err) {
+        showToast('Network error — please try again', 'error');
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    load();
   </script>
 </body>
 </html>
