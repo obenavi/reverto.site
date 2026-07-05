@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recipes — Reverto</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .recipe-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--color-border);
+      cursor: pointer;
+    }
+    .recipe-row:last-child { border-bottom: none; }
+    .recipe-main { min-width: 0; }
+    .recipe-name { font-weight: 800; font-size: 1rem; }
+    .recipe-meta { color: var(--color-muted); font-size: 0.85rem; margin-top: 3px; }
+    .fc-pill {
+      display: inline-block; padding: 3px 10px; border-radius: 14px;
+      font-size: 0.8rem; font-weight: 800; white-space: nowrap;
+    }
+    .fc-good { color: #047857; background: rgba(16,185,129,0.14); }
+    .fc-warn { color: #b45309; background: rgba(245,158,11,0.16); }
+    .fc-bad  { color: #b91c1c; background: rgba(239,68,68,0.14); }
+    .fc-none { color: var(--color-muted); background: var(--color-border); }
+
+    .field select {
+      width: 100%; padding: 12px; font-size: 1rem;
+      border: 1px solid var(--color-border); border-radius: var(--radius);
+      background: var(--color-surface); color: var(--color-text);
+    }
+    .form-actions { display: flex; gap: 10px; margin-top: 4px; }
+    .form-actions .btn { width: auto; flex: 1; }
+    .hidden { display: none; }
+
+    .ing-head { display: flex; align-items: baseline; justify-content: space-between; margin: 6px 0; }
+    .ing-row {
+      display: grid; grid-template-columns: 1fr; gap: 8px;
+      padding: 12px; border: 1px solid var(--color-border);
+      border-radius: var(--radius); margin-bottom: 10px; background: var(--color-surface);
+    }
+    .ing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .ing-row input, .ing-row select {
+      width: 100%; padding: 10px; font-size: 0.95rem;
+      border: 1px solid var(--color-border); border-radius: var(--radius);
+      background: var(--color-bg); color: var(--color-text);
+    }
+    .ing-actions { display: flex; gap: 8px; align-items: center; }
+    .ing-actions .btn { width: auto; padding: 8px 12px; font-size: 0.82rem; }
+    .ing-cost-src { font-size: 0.78rem; color: #6d28d9; margin-top: 2px; min-height: 14px; }
+    .ing-remove {
+      background: none; border: none; color: var(--color-muted);
+      font-size: 0.82rem; cursor: pointer; padding: 4px; width: auto;
+    }
+    .totals-card { background: linear-gradient(135deg, rgba(124,58,237,0.10), rgba(236,72,153,0.10)); }
+    .totals-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
+    .totals-grid .t-lbl { font-size: 0.72rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .totals-grid .t-val { font-weight: 800; font-size: 1.15rem; margin-top: 2px; }
+    .delete-link { display: block; margin-top: 12px; text-align: center; color: #b91c1c;
+      background: none; border: none; cursor: pointer; font-size: 0.9rem; width: 100%; }
+  </style>
+</head>
+<body class="app-body">
+  <div class="app-frame">
+  <main class="app-content">
+    <h1 class="greeting">Recipes</h1>
+    <p class="greeting-sub">Recipe BOM (Bill of Materials)</p>
+
+    <div style="margin-bottom:16px;">
+      <button type="button" id="add-recipe-btn" class="btn btn-auto">+ Add recipe</button>
+    </div>
+
+    <!-- Add / edit form -->
+    <div class="card hidden" id="recipe-form-card">
+      <h2 id="form-title">Add recipe</h2>
+      <form id="recipe-form">
+        <input type="hidden" id="recipe-id">
+        <div class="field">
+          <label for="r-name">Recipe / dish name</label>
+          <input type="text" id="r-name" maxlength="200" required autocomplete="off">
+        </div>
+        <div class="ing-grid">
+          <div class="field">
+            <label for="r-yield-qty">Yield qty <span class="muted">optional</span></label>
+            <input type="number" id="r-yield-qty" min="0" step="any" inputmode="decimal" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="r-yield-unit">Yield unit</label>
+            <select id="r-yield-unit">
+              <option value="servings" selected>servings</option>
+              <option value="each">each</option>
+              <option value="portions">portions</option>
+              <option value="batch">batch</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="r-menu-price">Menu price <span class="muted">optional</span></label>
+          <input type="number" id="r-menu-price" min="0" step="any" inputmode="decimal" autocomplete="off">
+        </div>
+
+        <div class="ing-head">
+          <h2 style="margin:0;">Ingredients</h2>
+          <button type="button" class="btn btn-secondary btn-auto" id="add-ing-btn" style="width:auto;padding:6px 12px;font-size:0.85rem;">+ Row</button>
+        </div>
+        <div id="ing-container"></div>
+
+        <!-- Live totals -->
+        <div class="card totals-card" style="margin-top:12px;">
+          <div class="totals-grid">
+            <div><div class="t-lbl">Total cost</div><div class="t-val" id="t-total">—</div></div>
+            <div><div class="t-lbl">Per serving</div><div class="t-val" id="t-serving">—</div></div>
+            <div><div class="t-lbl">Food cost %</div><div class="t-val" id="t-fcpct">—</div></div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
+          <button type="submit" class="btn" id="save-btn">Save recipe</button>
+        </div>
+        <button type="button" class="delete-link hidden" id="delete-btn">Delete this recipe</button>
+      </form>
+    </div>
+
+    <!-- Recipe list -->
+    <div id="recipes-container"></div>
+  </main>
+  </div>
+
+  <script src="/js/db.js?v=2"></script>
+  <script src="/js/shell.js?v=1"></script>
+  <script>
+    if (!Auth.requireAuth()) throw new Error('redirect');
+    Shell.mount(document.querySelector('.app-frame'), 'recipes');
+
+    const UNITS = ['lb', 'oz', 'each', 'cup', 'tbsp', 'tsp', 'gal', 'qt'];
+
+    const container = document.getElementById('recipes-container');
+    const formCard = document.getElementById('recipe-form-card');
+    const form = document.getElementById('recipe-form');
+    const ingContainer = document.getElementById('ing-container');
+    const saveBtn = document.getElementById('save-btn');
+    const deleteBtn = document.getElementById('delete-btn');
+    const formTitle = document.getElementById('form-title');
+
+    function el(tag, cls, text) {
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (text != null) n.textContent = text;
+      return n;
+    }
+
+    // Food-cost % color bucket: green<30, amber 30-35, red>35.
+    function fcClass(pct) {
+      if (pct == null) return 'fc-none';
+      if (pct < 30) return 'fc-good';
+      if (pct <= 35) return 'fc-warn';
+      return 'fc-bad';
+    }
+
+    // ── Ingredient rows ──────────────────────────────────────────────────────
+    function addIngRow(ing) {
+      ing = ing || {};
+      const row = el('div', 'ing-row');
+
+      const nameInput = el('input');
+      nameInput.type = 'text';
+      nameInput.placeholder = 'Ingredient name';
+      nameInput.maxLength = 200;
+      nameInput.setAttribute('autocomplete', 'off');
+      if (ing.name) nameInput.value = ing.name;
+      nameInput.className = 'ing-name';
+      row.appendChild(nameInput);
+
+      const grid = el('div', 'ing-grid');
+
+      const qtyInput = el('input');
+      qtyInput.type = 'number'; qtyInput.min = '0'; qtyInput.step = 'any';
+      qtyInput.inputMode = 'decimal'; qtyInput.placeholder = 'Qty';
+      qtyInput.className = 'ing-qty';
+      if (ing.quantity != null) qtyInput.value = ing.quantity;
+      grid.appendChild(qtyInput);
+
+      const unitSel = el('select');
+      unitSel.className = 'ing-unit';
+      UNITS.forEach(u => {
+        const o = el('option', null, u); o.value = u;
+        if (ing.unit === u) o.selected = true;
+        unitSel.appendChild(o);
+      });
+      grid.appendChild(unitSel);
+      row.appendChild(grid);
+
+      const costInput = el('input');
+      costInput.type = 'number'; costInput.min = '0'; costInput.step = 'any';
+      costInput.inputMode = 'decimal'; costInput.placeholder = 'Unit cost ($)';
+      costInput.className = 'ing-cost';
+      if (ing.unit_cost != null) costInput.value = ing.unit_cost;
+      row.appendChild(costInput);
+
+      const srcLine = el('div', 'ing-cost-src');
+      row.appendChild(srcLine);
+
+      const actions = el('div', 'ing-actions');
+      const autoBtn = el('button', 'btn btn-secondary', 'Auto-cost');
+      autoBtn.type = 'button';
+      autoBtn.addEventListener('click', () => autoCost(nameInput, costInput, unitSel, srcLine, autoBtn));
+      actions.appendChild(autoBtn);
+
+      const removeBtn = el('button', 'ing-remove', 'Remove');
+      removeBtn.type = 'button';
+      removeBtn.addEventListener('click', () => { row.remove(); recompute(); });
+      actions.appendChild(removeBtn);
+      row.appendChild(actions);
+
+      [qtyInput, costInput].forEach(inp => inp.addEventListener('input', recompute));
+
+      ingContainer.appendChild(row);
+      return row;
+    }
+
+    async function autoCost(nameInput, costInput, unitSel, srcLine, btn) {
+      const name = nameInput.value.trim();
+      if (!name) { showToast('Enter an ingredient name first', 'error'); return; }
+      btn.disabled = true;
+      srcLine.textContent = 'Looking up your invoices…';
+      try {
+        const res = await apiFetch('/recipes/ingredient-cost?name=' + encodeURIComponent(name));
+        if (!res) return; // redirected on 401
+        if (res.ok && res.data && res.data.found) {
+          costInput.value = res.data.unit_cost;
+          // Align the unit select with the purchase basis when it's a valid option.
+          if (res.data.basis && UNITS.includes(res.data.basis)) unitSel.value = res.data.basis;
+          const vendor = res.data.vendor_name || 'a supplier';
+          srcLine.textContent = 'from ' + vendor + (res.data.last_date ? ', ' + formatDate(res.data.last_date) : '')
+            + ' (per ' + res.data.basis + ')';
+          recompute();
+        } else {
+          srcLine.textContent = 'No matching purchase found — enter cost manually.';
+        }
+      } catch (err) {
+        srcLine.textContent = 'Lookup failed — enter cost manually.';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // Read current ingredient rows from the DOM.
+    function readIngredients() {
+      const rows = [];
+      ingContainer.querySelectorAll('.ing-row').forEach(row => {
+        const name = row.querySelector('.ing-name').value.trim();
+        const qtyStr = row.querySelector('.ing-qty').value;
+        const costStr = row.querySelector('.ing-cost').value;
+        rows.push({
+          name,
+          quantity: qtyStr === '' ? null : Number(qtyStr),
+          unit: row.querySelector('.ing-unit').value,
+          unit_cost: costStr === '' ? null : Number(costStr),
+        });
+      });
+      return rows;
+    }
+
+    // ── Live cost recompute ──────────────────────────────────────────────────
+    function recompute() {
+      const ings = readIngredients();
+      let total = 0;
+      ings.forEach(i => {
+        const q = Number(i.quantity), c = Number(i.unit_cost);
+        if (isFinite(q) && isFinite(c)) total += q * c;
+      });
+
+      const yieldQty = Number(document.getElementById('r-yield-qty').value);
+      const menuPrice = Number(document.getElementById('r-menu-price').value);
+
+      document.getElementById('t-total').textContent = formatUSD(total);
+      document.getElementById('t-serving').textContent =
+        (isFinite(yieldQty) && yieldQty > 0) ? formatUSD(total / yieldQty) : '—';
+
+      const fcEl = document.getElementById('t-fcpct');
+      if (isFinite(menuPrice) && menuPrice > 0) {
+        const pct = (total / menuPrice) * 100;
+        fcEl.textContent = formatPct(pct);
+        fcEl.className = 't-val';
+        const cls = fcClass(pct);
+        fcEl.style.color = cls === 'fc-good' ? '#047857' : cls === 'fc-warn' ? '#b45309' : cls === 'fc-bad' ? '#b91c1c' : '';
+      } else {
+        fcEl.textContent = '—';
+        fcEl.style.color = '';
+      }
+    }
+
+    // ── Form open/close ──────────────────────────────────────────────────────
+    function openForm(recipe, ingredients) {
+      form.reset();
+      ingContainer.innerHTML = '';
+      recipe = recipe || {};
+      document.getElementById('recipe-id').value = recipe.id || '';
+      document.getElementById('r-name').value = recipe.name || '';
+      document.getElementById('r-yield-qty').value = recipe.yield_qty != null ? recipe.yield_qty : '';
+      document.getElementById('r-yield-unit').value = recipe.yield_unit || 'servings';
+      document.getElementById('r-menu-price').value = recipe.menu_price != null ? recipe.menu_price : '';
+      formTitle.textContent = recipe.id ? 'Edit recipe' : 'Add recipe';
+      deleteBtn.classList.toggle('hidden', !recipe.id);
+
+      const ings = (ingredients && ingredients.length) ? ingredients : [{}];
+      ings.forEach(addIngRow);
+
+      recompute();
+      formCard.classList.remove('hidden');
+      formCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      document.getElementById('r-name').focus();
+    }
+    function closeForm() { formCard.classList.add('hidden'); form.reset(); ingContainer.innerHTML = ''; }
+
+    document.getElementById('add-recipe-btn').addEventListener('click', () => openForm(null));
+    document.getElementById('add-ing-btn').addEventListener('click', () => addIngRow(null));
+    document.getElementById('cancel-btn').addEventListener('click', closeForm);
+    document.getElementById('r-yield-qty').addEventListener('input', recompute);
+    document.getElementById('r-menu-price').addEventListener('input', recompute);
+
+    // ── Edit an existing recipe (fetch detail for ingredients) ───────────────
+    async function editRecipe(id) {
+      const res = await apiFetch('/recipes/list?id=' + encodeURIComponent(id));
+      if (!res) return; // redirected on 401
+      if (!res.ok || !res.data || !res.data.recipe) {
+        showToast((res.data && res.data.error) || 'Could not load recipe', 'error');
+        return;
+      }
+      openForm(res.data.recipe, res.data.ingredients || []);
+    }
+
+    // ── List render ──────────────────────────────────────────────────────────
+    function renderRecipes(recipes) {
+      container.innerHTML = '';
+      if (!recipes.length) {
+        const card = el('div', 'card');
+        card.appendChild(el('h2', null, 'No recipes yet'));
+        card.appendChild(el('p', 'muted',
+          'Create your first recipe to see its true cost from your invoices.'));
+        const b = el('button', 'btn btn-auto', '+ Create your first recipe');
+        b.type = 'button';
+        b.addEventListener('click', () => openForm(null));
+        card.appendChild(b);
+        container.appendChild(card);
+        return;
+      }
+      const card = el('div', 'card');
+      card.appendChild(el('h2', null, 'Your recipes'));
+      recipes.forEach(r => {
+        const row = el('div', 'recipe-row');
+        row.addEventListener('click', () => editRecipe(r.id));
+
+        const main = el('div', 'recipe-main');
+        main.appendChild(el('div', 'recipe-name', r.name || '—'));
+        const metaBits = [];
+        if (r.cost_per_serving != null) metaBits.push(formatUSD(r.cost_per_serving) + ' / serving');
+        else metaBits.push(formatUSD(r.total_cost || 0) + ' total');
+        main.appendChild(el('div', 'recipe-meta', metaBits.join(' · ')));
+        row.appendChild(main);
+
+        const pill = el('span', 'fc-pill ' + fcClass(r.food_cost_pct),
+          r.food_cost_pct != null ? formatPct(r.food_cost_pct) + ' FC' : 'No price');
+        row.appendChild(pill);
+
+        card.appendChild(row);
+      });
+      container.appendChild(card);
+    }
+
+    async function load() {
+      const res = await apiFetch('/recipes/list');
+      if (!res) return; // redirected on 401
+      if (!res.ok || !res.data || !Array.isArray(res.data.recipes)) {
+        showToast((res.data && res.data.error) || 'Could not load recipes', 'error');
+        renderRecipes([]);
+        return;
+      }
+      renderRecipes(res.data.recipes);
+    }
+
+    // ── Save ─────────────────────────────────────────────────────────────────
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('r-name').value.trim();
+      if (!name) { showToast('Recipe name is required', 'error'); return; }
+
+      const yq = document.getElementById('r-yield-qty').value;
+      const mp = document.getElementById('r-menu-price').value;
+
+      const payload = {
+        id: document.getElementById('recipe-id').value || undefined,
+        name,
+        yield_qty: yq === '' ? undefined : Number(yq),
+        yield_unit: document.getElementById('r-yield-unit').value,
+        menu_price: mp === '' ? undefined : Number(mp),
+        ingredients: readIngredients().filter(i => i.name),
+      };
+
+      saveBtn.disabled = true;
+      try {
+        const res = await apiFetch('/recipes/save', { method: 'POST', body: JSON.stringify(payload) });
+        if (!res) return; // redirected on 401
+        if (res.ok && res.data && res.data.saved) {
+          showToast('Recipe saved', 'success');
+          closeForm();
+          await load();
+        } else {
+          showToast((res.data && res.data.error) || 'Could not save recipe', 'error');
+        }
+      } catch (err) {
+        showToast('Network error — please try again', 'error');
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    // ── Delete ───────────────────────────────────────────────────────────────
+    deleteBtn.addEventListener('click', async () => {
+      const id = document.getElementById('recipe-id').value;
+      if (!id) return;
+      if (!window.confirm('Delete this recipe? This cannot be undone.')) return;
+      deleteBtn.disabled = true;
+      try {
+        const res = await apiFetch('/recipes/delete', { method: 'POST', body: JSON.stringify({ id }) });
+        if (!res) return; // redirected on 401
+        if (res.ok && res.data && res.data.deleted) {
+          showToast('Recipe deleted', 'success');
+          closeForm();
+          await load();
+        } else {
+          showToast((res.data && res.data.error) || 'Could not delete recipe', 'error');
+        }
+      } catch (err) {
+        showToast('Network error — please try again', 'error');
+      } finally {
+        deleteBtn.disabled = false;
+      }
+    });
+
+    load();
+  </script>
+</body>
+</html>

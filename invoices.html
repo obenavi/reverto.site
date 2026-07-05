@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoices — Reverto</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .badge-verified { background: #d1fae5; color: #065f46; }
+    .badge-pending  { background: #fef3c7; color: #92400e; }
+    .badge-error    { background: #fee2e2; color: #991b1b; }
+
+    .data-table tbody tr.row-link { cursor: pointer; }
+    .data-table tbody tr.row-link:hover td { background: #f9f9f8; }
+
+    .state-block {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--color-muted);
+    }
+    .state-block .spinner { width: 24px; height: 24px; margin: 0 auto 12px; }
+  </style>
+</head>
+<body class="app-body">
+  <div class="app-frame">
+  <main class="app-content">
+    <div class="card">
+      <h2>Invoices</h2>
+
+      <div id="loading-state" class="state-block">
+        <div class="spinner"></div>
+        <div>Loading invoices...</div>
+      </div>
+
+      <div id="empty-state" class="state-block" style="display:none;">
+        <p>No invoices yet.</p>
+        <p><a href="/app.html">Upload your first invoice</a> to get started.</p>
+      </div>
+
+      <div id="table-wrap" style="display:none;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Vendor</th>
+              <th>Invoice #</th>
+              <th class="num">Total</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="inv-rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  </div>
+
+  <script src="/js/db.js?v=2"></script>
+  <script src="/js/shell.js?v=1"></script>
+  <script>
+    if (!Auth.requireAuth()) throw new Error('redirect');
+    Shell.mount(document.querySelector('.app-frame'), 'dashboard');
+
+    function statusBadge(status) {
+      const span = document.createElement('span');
+      span.className = 'badge';
+      span.textContent = status || 'unknown';
+      if (status === 'verified') span.classList.add('badge-verified');
+      else if (status === 'pending') span.classList.add('badge-pending');
+      else span.classList.add('badge-error');
+      return span;
+    }
+
+    function renderRows(invoices) {
+      const tbody = document.getElementById('inv-rows');
+      tbody.innerHTML = '';
+      for (const inv of invoices) {
+        const tr = document.createElement('tr');
+        tr.className = 'row-link';
+        const id = inv.id;
+        tr.addEventListener('click', () => {
+          window.location.href = '/invoice.html?id=' + encodeURIComponent(id);
+        });
+
+        const tdDate = document.createElement('td');
+        tdDate.textContent = formatDate(inv.invoice_date || inv.created_at);
+        tr.appendChild(tdDate);
+
+        const tdVendor = document.createElement('td');
+        tdVendor.textContent = inv.vendor_name || '—';
+        tr.appendChild(tdVendor);
+
+        const tdNumber = document.createElement('td');
+        tdNumber.textContent = inv.invoice_number || '—';
+        tr.appendChild(tdNumber);
+
+        const tdTotal = document.createElement('td');
+        tdTotal.className = 'num';
+        tdTotal.textContent = inv.total_amount != null ? formatUSD(inv.total_amount) : '—';
+        tr.appendChild(tdTotal);
+
+        const tdStatus = document.createElement('td');
+        tdStatus.appendChild(statusBadge(inv.status));
+        tr.appendChild(tdStatus);
+
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function load() {
+      const res = await apiFetch('/invoices/list');
+
+      document.getElementById('loading-state').style.display = 'none';
+
+      if (!res) return; // redirected on 401
+      if (!res.ok || !res.data || res.data.error) {
+        showToast((res.data && res.data.error) || 'Could not load invoices', 'error');
+        document.getElementById('loading-state').style.display = 'block';
+        document.getElementById('loading-state').querySelector('.spinner')?.remove();
+        document.getElementById('loading-state').querySelector('div').textContent = 'Failed to load invoices.';
+        return;
+      }
+
+      const invoices = Array.isArray(res.data.invoices) ? res.data.invoices : [];
+      if (!invoices.length) {
+        document.getElementById('empty-state').style.display = 'block';
+        return;
+      }
+
+      renderRows(invoices);
+      document.getElementById('table-wrap').style.display = 'block';
+    }
+
+    load().catch(() => {
+      document.getElementById('loading-state').style.display = 'none';
+      showToast('Failed to load invoices', 'error');
+    });
+  </script>
+</body>
+</html>

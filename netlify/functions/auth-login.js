@@ -1,13 +1,17 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
+const _RAW_SUPABASE_URL = process.env.SUPABASE_URL || '';
+// Accept either a full URL or a bare project ref (build the full URL from the ref).
+const SUPABASE_URL = _RAW_SUPABASE_URL.startsWith('http')
+  ? _RAW_SUPABASE_URL.replace(/\/+$/, '')
+  : (_RAW_SUPABASE_URL ? 'https://' + _RAW_SUPABASE_URL + '.supabase.co' : '');
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const JWT_SECRET = process.env.JWT_SECRET;
 
 function makeJwt(payload) {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
-  const body = Buffer.from(JSON.stringify({ ...payload, exp: Math.floor(Date.now() / 1000) + 7 * 86400 })).toString('base64url');
+  const body = Buffer.from(JSON.stringify({ ...payload, exp: Math.floor(Date.now() / 1000) + 30 * 86400 })).toString('base64url');
   const sig = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
   return `${header}.${body}.${sig}`;
 }

@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reverto — Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* Price-change alerts (matches prototype-dashboard.html) */
+    .alert-row { display: flex; align-items: center; gap: 11px; padding: 10px 0; border-bottom: 1px solid var(--color-border); }
+    .alert-row:last-child { border-bottom: none; padding-bottom: 2px; }
+    .alert-row .ar-ic { width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .ar-up { background: rgba(185,28,28,0.10); color: #b91c1c; }
+    .ar-dn { background: rgba(21,128,61,0.10); color: #15803d; }
+    .alert-row .ar-body { flex: 1; min-width: 0; }
+    .alert-row .ar-t { font-weight: 700; font-size: 0.9rem; }
+    .alert-row .ar-s { font-size: 0.75rem; color: var(--color-muted); }
+    .alert-row .ar-pct { font-weight: 800; font-size: 0.95rem; white-space: nowrap; }
+    .alert-row .ar-pct.up { color: #b91c1c; }
+    .alert-row .ar-pct.down { color: #15803d; }
+
+    /* Payments & vendor spend (matches prototype-dashboard.html) */
+    #pay-headline { font-weight: 800; color: var(--color-text); }
+    .pay-row { display: flex; align-items: baseline; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--color-border); font-size: 0.82rem; }
+    .pay-row:last-child { border-bottom: none; }
+    .pay-row .pr-body { flex: 1; min-width: 0; }
+    .pay-row .pr-t { font-weight: 700; }
+    .pay-row .pr-s { font-size: 0.72rem; color: var(--color-muted); }
+    .pay-row .pr-s .assumed { font-style: italic; opacity: 0.75; }
+    .pay-row .pr-amt { font-weight: 800; white-space: nowrap; }
+    .pay-row .pr-due { white-space: nowrap; font-weight: 700; color: var(--color-muted); }
+    .pay-row .pr-due.overdue { color: #b91c1c; }
+    .pay-flex { display: flex; gap: 14px; align-items: center; margin-top: 12px; }
+    .donut-legend { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+    .leg-item { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
+    .leg-swatch { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+    .leg-name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .leg-val { font-weight: 700; white-space: nowrap; }
+  </style>
+</head>
+<body class="app-body">
+  <div class="app-frame">
+  <main class="app-content">
+    <h1 class="greeting" id="greeting">Welcome back</h1>
+    <p class="greeting-sub" id="greeting-sub">Here's where your kitchen stands.</p>
+
+    <div class="grid">
+
+      <!-- 1. FOOD COST % HERO -->
+      <a href="/sales.html" class="fc-hero card-link" id="fc-card" aria-label="Food cost percentage. View sales detail.">
+        <div class="card-head">
+          <span class="card-title">Food cost %</span>
+          <span class="view">View<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        </div>
+        <div class="hero-main">
+          <div>
+            <div class="value" id="fc-value">—</div>
+            <div class="hero-foot" id="fc-foot">
+              <span class="target" id="fc-target">Target 30%</span>
+            </div>
+          </div>
+          <div id="fc-spark"></div>
+        </div>
+        <div class="fc-legend">
+          <span><span class="dot dot-g"></span>Healthy &lt;30%</span>
+          <span><span class="dot dot-a"></span>Watch 30–35%</span>
+          <span><span class="dot dot-r"></span>High &gt;35%</span>
+        </div>
+      </a>
+
+      <!-- 2. Z-REPORT REMINDER (shown only when yesterday's close is missing) -->
+      <a href="/sales.html" class="zbanner" id="zbanner" style="display:none" aria-label="Add yesterday's Z report.">
+        <span class="zic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
+        <span class="zbody">
+          <span class="zt">Add yesterday's Z report</span>
+          <span class="zs" id="zbanner-sub">Yesterday's close is missing — food cost % can't update without it.</span>
+        </span>
+        <span class="zbtn">Add</span>
+      </a>
+
+      <!-- 3 + 4. SALES + PURCHASES -->
+      <div class="pair">
+        <a href="/sales.html" class="card-link" aria-label="Sales. View sales detail.">
+          <div class="card-head">
+            <span class="card-title">Sales</span>
+            <span class="view">View<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="big-num" id="sales-num">—</div>
+          <div class="sub-trend muted" id="sales-sub">Last 30 days</div>
+        </a>
+
+        <a href="/invoices.html" class="card-link" aria-label="Purchases. View invoices.">
+          <div class="card-head">
+            <span class="card-title">Purchases</span>
+            <span class="view">View<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="big-num" id="purch-num">—</div>
+          <div class="sub-trend muted" id="purch-sub">This month</div>
+        </a>
+      </div>
+
+      <!-- 5. PRICE-CHANGE ALERTS (real data) -->
+      <div class="card-link" style="cursor:default">
+        <div class="card-head">
+          <span class="card-title">Price-change alerts</span>
+        </div>
+        <div id="alerts-body">
+          <div class="coming-soon"><span class="cs-s">Loading…</span></div>
+        </div>
+      </div>
+
+      <!-- 6. RECENT INVOICES (real data) -->
+      <a href="/invoices.html" class="card-link" id="recent-card" aria-label="Recent invoices. View all invoices.">
+        <div class="card-head">
+          <span class="card-title">Recent invoices</span>
+          <span class="view">View all<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        </div>
+        <div id="recent-body">
+          <div class="coming-soon"><span class="cs-s">Loading…</span></div>
+        </div>
+      </a>
+
+      <!-- 7. PAYMENTS & VENDOR SPEND (real data) -->
+      <div class="card-link" style="cursor:default">
+        <div class="card-head">
+          <span class="card-title">Payments &amp; vendor spend</span>
+          <span class="view" id="pay-headline"></span>
+        </div>
+        <div id="pay-body">
+          <div class="coming-soon"><span class="cs-s">Loading…</span></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+  </div>
+
+  <script src="/js/db.js?v=2"></script>
+  <script src="/js/shell.js?v=1"></script>
+  <script>
+    if (!Auth.requireAuth()) throw new Error('redirect');
+    Shell.mount(document.querySelector('.app-frame'), 'dashboard');
+
+    // ── Greeting ──────────────────────────────────────────────────────────
+    (function () {
+      var h = new Date().getHours();
+      var part = h < 12 ? 'Good morning' : (h < 18 ? 'Good afternoon' : 'Good evening');
+      var name = (Auth.name() || '').split(/\s+/)[0];
+      document.getElementById('greeting').textContent = name ? (part + ', ' + name) : part;
+      var d = new Date();
+      document.getElementById('greeting-sub').textContent =
+        d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
+        ' · Here\'s where your kitchen stands.';
+    })();
+
+    function fcClass(pct) {
+      if (pct == null) return '';
+      if (pct < 30) return 'fc-good';
+      if (pct <= 35) return 'fc-warn';
+      return 'fc-bad';
+    }
+    function sparkColor(pct) {
+      if (pct == null) return '#9ca3af';
+      if (pct < 30) return '#15803d';
+      if (pct <= 35) return '#d97706';
+      return '#b91c1c';
+    }
+
+    // Build an inline-SVG sparkline from an array of {pct} day points.
+    function renderSpark(target, days, color) {
+      var pts = days.map(function (d) { return d.pct; }).filter(function (p) { return p != null; });
+      if (pts.length < 2) return; // not enough to draw
+      var w = 132, h = 60, pad = 4;
+      var min = Math.min.apply(null, pts), max = Math.max.apply(null, pts);
+      var span = (max - min) || 1;
+      var n = pts.length;
+      var coords = pts.map(function (p, i) {
+        var x = pad + (i * (w - pad * 2)) / (n - 1);
+        var y = pad + (1 - (p - min) / span) * (h - pad * 2 - 2);
+        return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
+      });
+      var line = coords.map(function (c, i) { return (i ? 'L' : 'M') + c[0] + ',' + c[1]; }).join(' ');
+      var area = line + ' L' + coords[n - 1][0] + ',' + (h - pad) + ' L' + coords[0][0] + ',' + (h - pad) + ' Z';
+      var last = coords[n - 1];
+      var gid = 'sparkFill_' + Math.random().toString(36).slice(2, 7);
+      target.innerHTML =
+        '<svg class="spark" width="132" height="60" viewBox="0 0 132 60" aria-hidden="true">' +
+        '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="' + color + '" stop-opacity="0.22"/>' +
+        '<stop offset="100%" stop-color="' + color + '" stop-opacity="0"/></linearGradient></defs>' +
+        '<path d="' + area + '" fill="url(#' + gid + ')"/>' +
+        '<path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+        '<circle cx="' + last[0] + '" cy="' + last[1] + '" r="3.2" fill="' + color + '"/></svg>';
+    }
+
+    // ── Sales report → food cost hero, sales card, Z-report banner ─────────
+    async function loadSales() {
+      var res = await apiFetch('/sales/report');
+      if (!res) return; // redirected on 401
+      if (!res.ok || !res.data || res.data.error) {
+        document.getElementById('fc-value').textContent = '—';
+        document.getElementById('sales-num').textContent = '—';
+        return;
+      }
+      var d = res.data;
+
+      var fcEl = document.getElementById('fc-value');
+      if (d.food_cost_pct == null) {
+        fcEl.textContent = 'No data yet';
+        fcEl.className = 'value';
+        fcEl.style.fontSize = '1.5rem';
+        document.getElementById('fc-target').textContent = 'Add sales to see your food cost %';
+      } else {
+        fcEl.textContent = formatPct(d.food_cost_pct);
+        fcEl.className = 'value ' + fcClass(d.food_cost_pct);
+        renderSpark(document.getElementById('fc-spark'), d.days || [], sparkColor(d.food_cost_pct));
+      }
+
+      // Sales (range total — labeled as last 30 days)
+      document.getElementById('sales-num').textContent = formatUSD(d.total_sales || 0);
+
+      // Z-report reminder: show if no daily_sales row for "yesterday".
+      // We derive "yesterday" from today (local) and check days[] for a match
+      // with net_sales present.
+      var yest = new Date();
+      yest.setDate(yest.getDate() - 1);
+      var yStr = yest.toISOString().slice(0, 10);
+      var has = (d.days || []).some(function (day) {
+        return day.report_date === yStr && day.net_sales != null && day.net_sales > 0;
+      });
+      if (!has) {
+        var lbl = yest.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        document.getElementById('zbanner-sub').textContent =
+          lbl + ' close is missing — food cost % can\'t update without it.';
+        document.getElementById('zbanner').style.display = 'flex';
+      }
+    }
+
+    // ── Invoices → purchases (MTD) + recent list ──────────────────────────
+    function vendorTag(name) {
+      var n = (name || '').replace(/[^A-Za-z]/g, '');
+      return (n.slice(0, 3) || 'INV').toUpperCase();
+    }
+    function invChip(inv) {
+      // Prefer the explicit approval flag when the list endpoint provides it.
+      if (inv && inv.approved === true) return '<span class="chip chip-ok">Approved</span>';
+      var status = inv && inv.status;
+      if (inv && inv.approved === false) return '<span class="chip chip-review">Needs review</span>';
+      if (status === 'verified' || status === 'paid') return '<span class="chip chip-ok">Approved</span>';
+      return '<span class="chip chip-review">Needs review</span>';
+    }
+
+    async function loadInvoices() {
+      var res = await apiFetch('/invoices/list');
+      var body = document.getElementById('recent-body');
+      if (!res) return; // redirected on 401
+      if (!res.ok || !res.data || res.data.error) {
+        body.innerHTML = '<div class="coming-soon"><span class="cs-s">Could not load invoices.</span></div>';
+        return;
+      }
+      var invoices = Array.isArray(res.data.invoices) ? res.data.invoices : [];
+
+      // Purchases MTD: sum total_amount for invoices dated this calendar month.
+      var now = new Date();
+      var ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+      var mtdTotal = 0, mtdCount = 0;
+      invoices.forEach(function (inv) {
+        var d = inv.invoice_date || inv.created_at || '';
+        if (typeof d === 'string' && d.slice(0, 7) === ym) {
+          mtdTotal += Number(inv.total_amount) || 0;
+          mtdCount += 1;
+        }
+      });
+      document.getElementById('purch-num').textContent = formatUSD(mtdTotal);
+      document.getElementById('purch-sub').textContent =
+        mtdCount + ' invoice' + (mtdCount === 1 ? '' : 's') + ' · this month';
+
+      // Recent invoices (top 4)
+      if (!invoices.length) {
+        body.innerHTML = '<div class="coming-soon"><span class="cs-s">No invoices yet. Tap Scan to add your first.</span></div>';
+        return;
+      }
+      var top = invoices.slice(0, 4);
+      body.innerHTML = top.map(function (inv) {
+        var sub = formatDate(inv.invoice_date || inv.created_at) +
+          (inv.invoice_number ? ' · #' + esc(inv.invoice_number) : '');
+        return '<div class="inv-row" data-id="' + esc(inv.id) + '">' +
+          '<span class="inv-logo">' + esc(vendorTag(inv.vendor_name)) + '</span>' +
+          '<span class="inv-body"><span class="inv-t">' + esc(inv.vendor_name || 'Invoice') + '</span>' +
+          '<span class="inv-s">' + sub + '</span></span>' +
+          '<span class="inv-right"><span class="inv-total">' +
+          (inv.total_amount != null ? formatUSD(inv.total_amount) : '—') + '</span>' +
+          invChip(inv) + '</span>' +
+          '<button class="kebab" type="button" aria-label="Invoice actions" data-kebab>' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>' +
+          '</button></div>';
+      }).join('');
+
+      // Row → invoice detail (the whole card is a link to /invoices.html, so
+      // intercept row clicks for per-invoice navigation).
+      body.querySelectorAll('.inv-row').forEach(function (row) {
+        row.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var kb = e.target.closest('[data-kebab]');
+          if (kb) { showToast('Coming soon', 'info'); return; }
+          window.location.href = '/invoice.html?id=' + encodeURIComponent(row.getAttribute('data-id'));
+        });
+      });
+    }
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
+    }
+
+    // ── Price-change alerts ───────────────────────────────────────────────
+    var UP_ARROW = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>';
+    var DN_ARROW = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>';
+
+    async function loadAlerts() {
+      var body = document.getElementById('alerts-body');
+      var res = await apiFetch('/alerts/price-changes');
+      if (!res) return; // redirected on 401
+      if (!res.ok || !res.data || res.data.error || !Array.isArray(res.data.alerts)) {
+        body.innerHTML = '<div class="coming-soon"><span class="cs-s">Could not load alerts.</span></div>';
+        return;
+      }
+      var alerts = res.data.alerts;
+      if (!alerts.length) {
+        body.innerHTML = '<div class="coming-soon"><span class="cs-s">No price changes yet — we\'ll flag changes once you\'ve bought the same item more than once.</span></div>';
+        return;
+      }
+      body.innerHTML = alerts.slice(0, 4).map(function (a) {
+        var up = a.direction === 'up';
+        var unit = a.basis === 'lb' ? ' / lb' : ' / case';
+        var pct = (a.pct_change > 0 ? '+' : '−') + Math.abs(a.pct_change) + '%';
+        var sub = formatUSD(a.prev_price) + ' → ' + formatUSD(a.curr_price) + unit +
+          (a.vendor_name ? ' · ' + esc(a.vendor_name) : '') + ' · since last order';
+        return '<div class="alert-row">' +
+          '<span class="ar-ic ' + (up ? 'ar-up' : 'ar-dn') + '">' + (up ? UP_ARROW : DN_ARROW) + '</span>' +
+          '<span class="ar-body"><span class="ar-t">' + esc(a.description) + '</span>' +
+          '<span class="ar-s">' + sub + '</span></span>' +
+          '<span class="ar-pct ' + (up ? 'up' : 'down') + '">' + pct + '</span>' +
+          '</div>';
+      }).join('');
+    }
+
+    // ── Payments & vendor spend ───────────────────────────────────────────
+    var DONUT_COLORS = ['#7c3aed', '#db2777', '#a78bfa', '#fbcfe8', '#c4b5fd'];
+
+    function termsLabel(t) {
+      var map = { net7: 'Net 7', net15: 'Net 15', net30: 'Net 30', net60: 'Net 60', ewa: 'EWA', cod: 'COD', prepaid: 'Prepaid' };
+      return map[t] || t;
+    }
+    function dueLabel(days) {
+      if (days < 0) return 'overdue ' + Math.abs(days) + 'd';
+      if (days === 0) return 'due today';
+      if (days === 1) return 'due tomorrow';
+      return 'due in ' + days + ' days';
+    }
+
+    function compactUSD(n) {
+      var v = Number(n) || 0;
+      if (v >= 1000) return '$' + (v / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+      return formatUSD(v);
+    }
+
+    function renderDonut(vendorSpend, total) {
+      // Top 4 vendors + an "Other" bucket. Build stroke-dasharray segments on a
+      // 100-circumference circle (r = 15.9155). offset walks backward per segment.
+      var top = vendorSpend.slice(0, 4);
+      var restTotal = vendorSpend.slice(4).reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0);
+      var segs = top.map(function (v, i) {
+        return { name: v.vendor_name, total: Number(v.total) || 0, color: DONUT_COLORS[i] };
+      });
+      if (restTotal > 0) segs.push({ name: 'Other', total: restTotal, color: DONUT_COLORS[4] });
+
+      var denom = total > 0 ? total : 1;
+      var offset = 25; // start at 12 o'clock
+      var circles = '<circle cx="21" cy="21" r="15.9155" fill="none" stroke="#eee" stroke-width="7"/>';
+      segs.forEach(function (s) {
+        var pct = Math.max(0, Math.round((s.total / denom) * 1000) / 10);
+        var gap = Math.round((100 - pct) * 10) / 10;
+        circles += '<circle cx="21" cy="21" r="15.9155" fill="none" stroke="' + s.color +
+          '" stroke-width="7" stroke-dasharray="' + pct + ' ' + gap +
+          '" stroke-dashoffset="' + offset + '"/>';
+        offset = Math.round((offset - pct) * 10) / 10;
+      });
+
+      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', '96'); svg.setAttribute('height', '96');
+      svg.setAttribute('viewBox', '0 0 42 42'); svg.setAttribute('aria-hidden', 'true');
+      svg.style.flexShrink = '0';
+      svg.innerHTML = circles +
+        '<text x="21" y="20.5" text-anchor="middle" font-size="6" font-weight="800" fill="#1a1025">' + esc(compactUSD(total)) + '</text>' +
+        '<text x="21" y="26" text-anchor="middle" font-size="3.4" fill="#6b7280">this month</text>';
+
+      var legend = document.createElement('div');
+      legend.className = 'donut-legend';
+      segs.forEach(function (s) {
+        var row = document.createElement('span');
+        row.className = 'leg-item';
+        var sw = document.createElement('span');
+        sw.className = 'leg-swatch'; sw.style.background = s.color;
+        var nm = document.createElement('span');
+        nm.className = 'leg-name'; nm.textContent = s.name;
+        var val = document.createElement('span');
+        val.className = 'leg-val'; val.textContent = compactUSD(s.total);
+        row.appendChild(sw); row.appendChild(nm); row.appendChild(val);
+        legend.appendChild(row);
+      });
+
+      var flex = document.createElement('div');
+      flex.className = 'pay-flex';
+      flex.appendChild(svg);
+      flex.appendChild(legend);
+      return flex;
+    }
+
+    async function loadPayments() {
+      var body = document.getElementById('pay-body');
+      var headline = document.getElementById('pay-headline');
+      var res = await apiFetch('/payments/forecast');
+      if (!res) return; // redirected on 401
+      if (!res.ok || !res.data || res.data.error) {
+        body.innerHTML = '<div class="coming-soon"><span class="cs-s">Could not load payments.</span></div>';
+        return;
+      }
+      var d = res.data;
+      var upcoming = Array.isArray(d.upcoming) ? d.upcoming : [];
+      var spend = Array.isArray(d.vendor_spend) ? d.vendor_spend : [];
+
+      // No invoices at all → friendly prompt.
+      if (!upcoming.length && !spend.length && !(Number(d.total_owed) > 0)) {
+        headline.textContent = '';
+        body.innerHTML = '<div class="coming-soon"><span class="cs-s">Scan invoices and add vendor payment terms to see upcoming payments here.</span></div>';
+        return;
+      }
+
+      body.textContent = '';
+
+      // Headline: total owed.
+      if (Number(d.total_owed) > 0) {
+        headline.textContent = formatUSD(d.total_owed) + ' owed';
+      } else {
+        headline.textContent = '';
+      }
+
+      // Upcoming payment rows (top 4). Empty → "No payments due".
+      if (!upcoming.length) {
+        var none = document.createElement('div');
+        none.className = 'coming-soon';
+        none.innerHTML = '<span class="cs-s">No payments due.</span>';
+        body.appendChild(none);
+      } else {
+        upcoming.slice(0, 4).forEach(function (p) {
+          var row = document.createElement('div');
+          row.className = 'pay-row';
+
+          var col = document.createElement('div');
+          col.className = 'pr-body';
+          var t = document.createElement('div');
+          t.className = 'pr-t';
+          t.textContent = p.vendor_name || 'Vendor';
+          var s = document.createElement('div');
+          s.className = 'pr-s';
+          var parts = termsLabel(p.terms);
+          if (p.invoice_number) parts += ' · #' + p.invoice_number;
+          s.textContent = parts;
+          if (p.assumed) {
+            s.appendChild(document.createTextNode(' '));
+            var a = document.createElement('span');
+            a.className = 'assumed';
+            a.textContent = '(assumed terms)';
+            s.appendChild(a);
+          }
+          col.appendChild(t); col.appendChild(s);
+
+          var amt = document.createElement('span');
+          amt.className = 'pr-amt';
+          amt.textContent = formatUSD(p.amount);
+
+          var due = document.createElement('span');
+          due.className = 'pr-due' + (p.days_until_due < 0 ? ' overdue' : '');
+          due.textContent = dueLabel(p.days_until_due);
+
+          row.appendChild(col); row.appendChild(amt); row.appendChild(due);
+          body.appendChild(row);
+        });
+      }
+
+      // Vendor-spend donut (current month).
+      if (spend.length && Number(d.total_spend_month) > 0) {
+        body.appendChild(renderDonut(spend, Number(d.total_spend_month) || 0));
+      }
+    }
+
+    loadSales().catch(function () {});
+    loadInvoices().catch(function () {});
+    loadAlerts().catch(function () {});
+    loadPayments().catch(function () {});
+  </script>
+</body>
+</html>

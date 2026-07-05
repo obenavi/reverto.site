@@ -12,7 +12,19 @@ jobs:
     steps:
       - name: Trigger market sync function
         run: |
-          curl -f -s -X POST \
+          # Site URL is public (not a secret). Use the NETLIFY_URL secret if set, else reverto.site.
+          URL="${{ secrets.NETLIFY_URL }}"
+          if [ -z "$URL" ]; then URL="https://reverto.site"; fi
+          echo "POSTing to $URL/.netlify/functions/market/sync"
+          code=$(curl -s -o /tmp/resp.txt -w "%{http_code}" -X POST \
             -H "Content-Type: application/json" \
             -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.NETLIFY_URL }}/.netlify/functions/market/sync"
+            "$URL/.netlify/functions/market/sync")
+          echo "HTTP status: $code"
+          echo "Response body:"; cat /tmp/resp.txt; echo
+          if [ "$code" != "200" ]; then
+            echo "::error::Market sync failed with HTTP $code (see body above)."
+            echo "If 401: the GitHub secret CRON_SECRET must match the Netlify CRON_SECRET env var."
+            exit 1
+          fi
+          echo "Market sync OK."

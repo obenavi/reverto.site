@@ -1,22 +1,34 @@
 // Invoice parsing: calls Azure Document Intelligence, routes to supplier parser
 const crypto = require('crypto');
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
+const _RAW_SUPABASE_URL = process.env.SUPABASE_URL || '';
+// Accept either a full URL or a bare project ref (build the full URL from the ref).
+const SUPABASE_URL = _RAW_SUPABASE_URL.startsWith('http')
+  ? _RAW_SUPABASE_URL.replace(/\/+$/, '')
+  : (_RAW_SUPABASE_URL ? 'https://' + _RAW_SUPABASE_URL + '.supabase.co' : '');
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const JWT_SECRET = process.env.JWT_SECRET;
 const AZURE_DI_ENDPOINT = process.env.AZURE_DI_ENDPOINT;
 const AZURE_DI_KEY = process.env.AZURE_DI_KEY;
 
 function verifyJwt(authHeader) {
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.slice(7);
-  const [h, b, s] = token.split('.');
-  if (!h || !b || !s) return null;
-  const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${h}.${b}`).digest('base64url');
-  if (expected !== s) return null;
-  const payload = JSON.parse(Buffer.from(b, 'base64url').toString());
-  if (payload.exp < Date.now() / 1000) return null;
-  return payload;
+  try {
+    if (!authHeader?.startsWith('Bearer ')) return null;
+    const token = authHeader.slice(7);
+    const [h, b, s] = token.split('.');
+    if (!h || !b || !s) return null;
+    const header = JSON.parse(Buffer.from(h, 'base64url').toString());
+    if (header.alg !== 'HS256') return null;
+    const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${h}.${b}`).digest('base64url');
+    const sigBuf = Buffer.from(s);
+    const expBuf = Buffer.from(expected);
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+    const payload = JSON.parse(Buffer.from(b, 'base64url').toString());
+    if (!payload.exp || payload.exp < Date.now() / 1000) return null;
+    return payload;
+  } catch (_) {
+    return null;
+  }
 }
 
 exports.handler = async (event) => {
@@ -29,18 +41,24 @@ exports.handler = async (event) => {
   try { body = JSON.parse(event.body); }
   catch (_) { return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
-  const { invoice_id, file_url } = body;
-  if (!invoice_id || !file_url) return { statusCode: 400, body: JSON.stringify({ error: 'invoice_id and file_url required' }) };
+  const { invoice_id } = body;
+  if (!invoice_id) return { statusCode: 400, body: JSON.stringify({ error: 'invoice_id required' }) };
 
   const H = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' };
 
-  // Fetch invoice row to verify ownership
-  const invRes = await fetch(`${SUPABASE_URL}/rest/v1/invoices?id=eq.${invoice_id}&business_id=eq.${payload.business_id}&select=id,supplier_id&limit=1`, { headers: H });
+  // Fetch invoice row to verify ownership and get the storage path (never trust a client-supplied file_url)
+  const invRes = await fetch(`${SUPABASE_URL}/rest/v1/invoices?id=eq.${invoice_id}&business_id=eq.${payload.business_id}&select=id,supplier_id,raw_file_url&limit=1`, { headers: H });
   const invRows = invRes.ok ? await invRes.json() : [];
   if (!invRows.length) return { statusCode: 404, body: JSON.stringify({ error: 'Invoice not found' }) };
 
+  const rawFileUrl = invRows[0].raw_file_url;
+  if (!rawFileUrl || !rawFileUrl.startsWith(`${payload.business_id}/`)) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Invoice has no associated file' }) };
+  }
+  const fileUrl = `${SUPABASE_URL}/storage/v1/object/invoices/${rawFileUrl}`;
+
   // Download file from Supabase Storage
-  const fileRes = await fetch(file_url, { headers: { 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+  const fileRes = await fetch(fileUrl, { headers: { 'Authorization': 'Bearer ' + SUPABASE_KEY } });
   if (!fileRes.ok) return { statusCode: 500, body: JSON.stringify({ error: 'Cannot fetch file' }) };
   const fileBuffer = await fileRes.arrayBuffer();
 
@@ -54,7 +72,7 @@ exports.handler = async (event) => {
     }
   );
 
-  if (!analyzeRes.ok) return { statusCode: 500, body: JSON.stringify({ error: 'Azure DI error', detail: await analyzeRes.text() }) };
+  if (!analyzeRes.ok) { console.error('parse: Azure DI error:', await analyzeRes.text()); return { statusCode: 500, body: JSON.stringify({ error: 'Azure DI error' }) }; }
 
   const operationUrl = analyzeRes.headers.get('operation-location');
   if (!operationUrl) return { statusCode: 500, body: JSON.stringify({ error: 'No operation URL from Azure' }) };
@@ -97,6 +115,7 @@ exports.handler = async (event) => {
     headers: H,
     body: JSON.stringify({
       status: 'verified',
+      vendor_name: vendorName || null,
       invoice_number: doc.InvoiceId?.content || null,
       invoice_date: doc.InvoiceDate?.valueDate || null,
       total_amount: doc.InvoiceTotal?.valueCurrency?.amount || null,

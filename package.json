@@ -1,0 +1,9 @@
+{
+  "name": "reverto-site",
+  "version": "1.0.0",
+  "description": "Reverto — cost-control SaaS for US independent restaurants",
+  "private": true,
+  "dependencies": {
+    "bcryptjs": "^2.4.3"
+  }
+}
