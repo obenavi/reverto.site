@@ -16,6 +16,66 @@ Note: `docs/LEGAL.md` header still says "Yield" (an older product name); the pro
 
 ---
 
+## 2026-07-05 — Peer-price benchmarking legal package (attorney hand-off)
+
+Prepared the attorney-ready package for the peer-price benchmarking feature (peer benchmark = median
+of prices OTHER Reverto restaurants paid, blended with the business's own prices + USDA). New files,
+all marked "DRAFT — for attorney review; not legal advice":
+- `docs/business/legal-peer-data-memo.md` — antitrust (Sherman §1 / FTC information-exchange
+  principles) + CCPA/CPRA + de-identification memo, with a "Questions for our attorney" checklist.
+- `docs/business/legal-peer-consent-copy.md` — dedicated, separate opt-in toggle copy (short + long
+  form + revocation wording).
+- `docs/business/legal-privacy-policy-peer-delta.md` — drop-in Privacy Policy section (publish only
+  when the feature ships).
+
+### Recommended thresholds (for attorney to bless)
+- **Data-age lag:** default to a **~3-month (90-day) minimum age lag** on contributed data (peer
+  window reflects ~3–6 months ago), for the antitrust "historical, not current" principle. This is in
+  tension with the methodology's trailing-30-day value window — flagged as the #1 open item. Note the
+  old DOJ/FTC 3-month/5-provider healthcare safe harbor was **withdrawn in 2023**; only the
+  principles survive, so there is no numeric bright line to self-certify against.
+- **Min participants:** keep **k = 5 distinct businesses AND ≥ 8 line items** (from methodology);
+  attorney to confirm 5 is enough and whether to add a hard per-business contribution cap.
+- **Median only** for v1 (no ranges/dispersion); region-only granularity.
+
+### Antitrust framing
+Mitigations designed in: neutral third-party manager (Reverto, not competitors exchanging directly),
+aggregation (median + k≥5, no firm identifiable), historical (past paid prices only), enough
+participants, no supplier-facing view, no named competitors, buyer-side input-cost context (lower risk
+than seller price-fixing). Treated as **blocking pending attorney sign-off**.
+
+### CCPA/CPRA framing
+Peer contribution = secondary use beyond serving the customer their own results → requires a
+**separate, explicit, opt-in** (not bundled with signup/ToS), clear de-identification disclosure, and
+a stored consent record. Deletion reconciliation recommendation: k≥5 medians are irreversibly
+de-identified, so already-published aggregates need not be recomputed; source contribution is deleted
+and dropped from all forward recomputes (belt-and-suspenders: nightly recompute naturally drops it,
+and suppresses buckets that fall below k=5).
+
+### PRODUCT preconditions before peer benchmarking can ship
+All must be true and built (engineering, AFTER attorney sign-off):
+1. **Opt-in toggle live** — dedicated, OFF by default, separate from signup/ToS; core value works
+   without it.
+2. **Consent record stored** — durable, timestamped (who/when/copy-version); aggregation filters to
+   opted-in businesses only.
+3. **k-anonymity enforced server-side** — no endpoint/query/cron/UI ever returns a peer figure below
+   k=5 distinct businesses / 8 line items; small-cell suppression on every dimension.
+4. **Historical-age filter** — the recommended minimum age lag (pending attorney's blessed number)
+   applied in the aggregation job.
+5. **USDA-only remains the default/fallback** — peer leg is additive; below the gate, silently falls
+   back to USDA-only (or "no benchmark").
+
+### ORDERED GATE (do not skip or reorder)
+**attorney sign-off → opt-in consent live (toggle + stored consent) → only then compute/show peer
+medians.** Until all three, ship USDA-only benchmark (no antitrust/consent exposure — the safe path
+already sequenced in `data-strategy.md` D.4).
+
+**Open for attorney (blocking):** the 10-item checklist at the end of `legal-peer-data-memo.md` —
+especially the data-age lag, min participants, whether business cost data is "personal information,"
+whether the aggregate is a "sale/share," and the deletion-reconciliation stance.
+
+---
+
 ## 2026-06-28 — Drafted Privacy Policy + Terms of Service
 
 Drafted two public-facing legal documents for Reverto's MVP launch:
@@ -49,6 +109,7 @@ Grounding done against the actual code/schema: tables/data confirmed are `busine
 | Data breach plan | Open | Write a short written breach-response plan before real users |
 | DMCA agent | Open / low | Users upload files; registration (~$6/yr at copyright.gov) is cheap insurance, not blocking for tiny MVP |
 | Vendor DPAs | Action | Accept DPAs in Supabase, Netlify, Azure dashboards |
+| Peer benchmarking (antitrust + CCPA opt-in) | Drafted, BLOCKED | Attorney sign-off required before build/launch — see 2026-07-05 entry + `legal-peer-data-memo.md` |
 
 ---
 
