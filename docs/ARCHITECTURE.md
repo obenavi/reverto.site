@@ -30,6 +30,9 @@ Yield is a cost-control SaaS for US restaurant operators. It tracks food cost, p
 
 ## Database Schema
 
+> The runnable source of truth is `db/schema.sql`. The listing below is the
+> narrative version; if the two ever disagree, the `.sql` file wins.
+
 ### Core Tables
 
 ```sql
@@ -220,28 +223,53 @@ CREATE TABLE audit_log (
 
 ## Netlify Functions
 
-| Function | Method | Purpose |
-|----------|--------|---------|
-| `auth/login` | POST | Verify email+password, return JWT |
-| `auth/signup` | POST | Create user + business, hash password |
-| `auth/refresh` | POST | Extend JWT |
-| `invoices/upload` | POST | Accept file → upload to Supabase Storage → trigger parse |
-| `invoices/parse` | POST | Call Azure Doc Intelligence → extract line items → store |
-| `invoices/list` | GET | Return paginated invoice list for business |
-| `items/list` | GET | Return item master with last prices |
-| `sales/save` | POST | Save daily Z report |
-| `sales/report` | GET | Return food cost report (sales vs invoice cost) |
-| `suppliers/save` | POST | Create/update supplier |
-| `market/prices` | GET | Return cached USDA prices for relevant commodities |
-| `billing/checkout` | POST | Create Stripe Checkout session |
-| `billing/webhook` | POST | Handle Stripe webhooks (subscription updates) |
-| `push/subscribe` | POST | Save push subscription endpoint |
-| `push/send` | POST | Cron-triggered: send scheduled notifications |
-| `users/profile` | PATCH | Update user profile + notification prefs |
-| `data/export` | GET | Export all business data (CCPA compliance) |
-| `data/delete` | DELETE | Delete account + all data (CCPA right to erasure) |
+Netlify only discovers functions at the **top level** of the functions directory —
+either `foo.js` or `foo/index.js`. Nested paths like `functions/auth/login.js` are
+never deployed as endpoints. So each endpoint is a flat directory named
+`<group>-<action>/index.js`, and `netlify.toml` maps it to a nested public path
+under `/api`. The frontend only ever calls `/api/...`.
 
----
+| Public path | Function directory | Status | Purpose |
+|-------------|-------------------|--------|---------|
+| `POST /api/auth/signup` | `auth-signup/` | built | Create business + owner user, return JWT |
+| `POST /api/auth/login` | `auth-login/` | built | Verify credentials, return JWT |
+| `GET /api/auth/me` | `auth-me/` | built | Current user + business (app bootstrap) |
+| `POST /api/business/setup` | `business-setup/` | built | Save onboarding: business, location, supplier |
+| `POST /api/invoices/parse` | `invoices-parse/` | built | Azure DI → supplier parser → `invoice_items` |
+| `POST /api/market/sync` | `market-sync/` | built | Cron: upsert USDA AMS prices |
+| `POST /api/invoices/upload` | `invoices-upload/` | todo | File → Supabase Storage → trigger parse |
+| `GET /api/invoices/list` | `invoices-list/` | todo | Paginated invoice list |
+| `GET /api/items/list` | `items-list/` | todo | Item master with last prices |
+| `POST /api/sales/save` | `sales-save/` | todo | Save daily Z report |
+| `GET /api/sales/report` | `sales-report/` | todo | Food cost report (sales vs invoice cost) |
+| `POST /api/suppliers/save` | `suppliers-save/` | todo | Create/update supplier |
+| `GET /api/market/prices` | `market-prices/` | todo | Cached USDA prices for tracked commodities |
+| `POST /api/billing/checkout` | `billing-checkout/` | todo | Stripe Checkout session |
+| `POST /api/billing/webhook` | `billing-webhook/` | todo | Stripe subscription webhooks |
+| `POST /api/push/subscribe` | `push-subscribe/` | todo | Save push endpoint |
+| `POST /api/push/send` | `push-send/` | todo | Cron: send scheduled notifications |
+| `PATCH /api/users/profile` | `users-profile/` | todo | Update profile + notification prefs |
+| `GET /api/data/export` | `data-export/` | todo | CCPA data export |
+| `DELETE /api/data/delete` | `data-delete/` | todo | CCPA erasure |
+
+### Shared modules
+
+Functions require these from the repo root; `netlify.toml` lists them under
+`included_files` so the bundler ships them.
+
+| Module | Purpose |
+|--------|---------|
+| `lib/http.js` | `handler()` wrapper: CORS preflight, method allowlist, JSON parse, error catch |
+| `lib/jwt.js` | HS256 sign/verify (constant-time), `fromEvent()` reads the Authorization header |
+| `lib/supabase.js` | PostgREST client: `select`, `selectOne`, `insert`, `upsert`, `update`, `remove` |
+| `parsers/*.js` | Supplier-specific invoice parsers |
+
+### Database
+
+`db/schema.sql` is the source of truth and is idempotent — apply it with
+`psql "$SUPABASE_DB_URL" -f db/schema.sql`. RLS is enabled on every table with no
+permissive policies: all access goes through functions using the service role key,
+so a leaked publishable key cannot read tenant data.
 
 ## OCR / Invoice Parsing Architecture
 
@@ -310,8 +338,8 @@ parsers/
 
 Same pattern as Reverto IL — no Supabase Auth, custom JWT:
 
-1. User submits email + password to `/netlify/functions/auth/login`
-2. Function fetches user row, verifies bcrypt hash
+1. User submits email + password to `/api/auth/login`
+2. Function fetches user row, verifies bcrypt hash (same response for unknown email and bad password)
 3. Signs JWT: `{ user_id, business_id, role, exp: now + 7d }` with HS256
 4. Frontend stores JWT in `sessionStorage` + `localStorage`
 5. Every API call sends `Authorization: Bearer <token>`
@@ -347,74 +375,52 @@ const valid = await bcrypt.compare(password, hash);
 ## File Structure
 
 ```
-yield-app/
+reverto.site/
 ├── index.html              # Landing page / marketing
+├── login.html              # Login
+├── signup.html             # Account creation
+├── onboarding.html         # 3-step setup wizard
 ├── app.html                # Main application shell
-├── onboarding.html         # Signup + setup flow
-├── login.html              # Login page
-├── privacy.html            # Privacy Policy (CCPA/CalOPPA required)
-├── terms.html              # Terms of Service
-├── accessibility.html      # Accessibility statement (ADA)
-├── sw.js                   # Service worker (push notifications + offline)
-├── manifest.json           # PWA manifest
+├── privacy.html            # Privacy Policy (CCPA/CalOPPA)   [todo]
+├── terms.html              # Terms of Service                [todo]
+├── accessibility.html      # Accessibility statement (ADA)   [todo]
+├── sw.js                   # Service worker                  [todo]
+├── manifest.json           # PWA manifest                    [todo]
 ├── css/
-│   ├── style.css           # Global styles
-│   └── app.css             # App-specific styles
+│   ├── style.css           # Design tokens, buttons, forms, auth pages
+│   └── app.css             # App shell: topbar, tabs, stats, tables
 ├── js/
-│   ├── db.js               # Auth, API helpers, utilities
-│   ├── app.js              # Main app logic
-│   ├── dashboard.js        # Dashboard + charts
-│   ├── invoices.js         # Invoice list + upload
-│   ├── market.js           # USDA prices display
-│   ├── suppliers.js        # Supplier management
-│   └── onboarding.js       # Onboarding flow
-├── netlify/
-│   └── functions/
-│       ├── auth/
-│       │   ├── login.js
-│       │   ├── signup.js
-│       │   └── refresh.js
-│       ├── invoices/
-│       │   ├── upload.js
-│       │   ├── parse.js
-│       │   └── list.js
-│       ├── market/
-│       │   ├── prices.js
-│       │   └── sync/           # Directory function with own package.json
-│       │       ├── index.js
-│       │       └── package.json
-│       ├── billing/
-│       │   ├── checkout.js
-│       │   └── webhook.js
-│       ├── push/
-│       │   ├── subscribe.js
-│       │   └── send/
-│       │       ├── index.js
-│       │       └── package.json
-│       ├── sales/
-│       │   ├── save.js
-│       │   └── report.js
-│       ├── suppliers/
-│       │   └── save.js
-│       ├── users/
-│       │   └── profile.js
-│       └── data/
-│           ├── export.js
-│           └── delete.js
-├── parsers/                # Invoice parser modules (used by invoices/parse.js)
+│   ├── db.js               # Auth store, apiFetch, formatting, plan gating
+│   ├── auth.js             # Login + signup pages
+│   ├── onboarding.js       # Setup wizard
+│   └── app.js              # App shell: tabs, bootstrap from /api/auth/me
+├── lib/                    # Shared function modules (bundled via included_files)
+│   ├── http.js
+│   ├── jwt.js
+│   └── supabase.js
+├── parsers/                # Invoice parser modules
 │   ├── sysco.js
-│   ├── usfoods.js
-│   ├── pfg.js
-│   └── generic.js
+│   ├── generic.js
+│   ├── usfoods.js          [todo]
+│   └── pfg.js              [todo]
+├── netlify/functions/      # One flat directory per endpoint
+│   ├── auth-login/         (index.js + package.json — bcryptjs)
+│   ├── auth-signup/        (index.js + package.json — bcryptjs)
+│   ├── auth-me/
+│   ├── business-setup/
+│   ├── invoices-parse/
+│   └── market-sync/
+├── db/
+│   └── schema.sql          # Idempotent Postgres schema
 ├── docs/
 │   ├── PLAN.md
 │   ├── ARCHITECTURE.md     # this file
 │   ├── LEGAL.md
 │   └── SYSCO-PARSER.md
-├── .github/
-│   └── workflows/
-│       ├── market-sync.yml     # Daily USDA price sync
-│       └── push-notifications.yml
+├── .github/workflows/
+│   ├── market-sync.yml     # Daily USDA price sync
+│   └── push-notifications.yml
+├── .env.example
 ├── .gitignore
 └── netlify.toml
 ```

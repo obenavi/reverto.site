@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Set up your restaurant — Yield</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="onboard-page">
+<main class="onboard-card">
+  <a class="logo" href="/" style="display:block;margin-bottom:1.5rem">Yield</a>
+
+  <div class="card">
+    <ol class="steps" id="steps">
+      <li aria-current="step">1. Restaurant</li>
+      <li>2. Location</li>
+      <li>3. Supplier</li>
+    </ol>
+
+    <div id="error" class="form-error hidden" role="alert"></div>
+
+    <form id="onboard-form" novalidate>
+      <!-- Step 1 -->
+      <fieldset class="step" data-step="0">
+        <legend>Tell us about your restaurant</legend>
+        <p class="muted small">This shapes the market prices we surface for you.</p>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="cuisine_type">Cuisine type</label>
+            <input type="text" id="cuisine_type" placeholder="Italian, Mexican, New American…">
+          </div>
+          <div class="field">
+            <label for="seats">Seats</label>
+            <input type="number" id="seats" min="0" step="1" placeholder="60">
+          </div>
+        </div>
+        <div class="field">
+          <label for="phone">Phone</label>
+          <input type="tel" id="phone" autocomplete="tel">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="city">City</label>
+            <input type="text" id="city" autocomplete="address-level2">
+          </div>
+          <div class="field">
+            <label for="state">State</label>
+            <input type="text" id="state" value="CA" maxlength="2" autocomplete="address-level1">
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- Step 2 -->
+      <fieldset class="step hidden" data-step="1">
+        <legend>Your first location</legend>
+        <p class="muted small">Invoices and sales are tracked per location. You can add more later.</p>
+
+        <div class="field">
+          <label for="loc_name">Location name <span aria-hidden="true">*</span></label>
+          <input type="text" id="loc_name" placeholder="Main Street" required>
+        </div>
+        <div class="field">
+          <label for="loc_address">Street address</label>
+          <input type="text" id="loc_address" autocomplete="street-address">
+        </div>
+      </fieldset>
+
+      <!-- Step 3 -->
+      <fieldset class="step hidden" data-step="2">
+        <legend>Your main distributor</legend>
+        <p class="muted small">Optional, but it makes invoice matching more accurate from day one.</p>
+
+        <div class="field">
+          <label for="sup_name">Distributor</label>
+          <select id="sup_name">
+            <option value="Sysco" selected>Sysco</option>
+            <option value="US Foods">US Foods</option>
+            <option value="Performance Food Group">Performance Food Group</option>
+            <option value="">Other / skip for now</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="rep_name">Rep name</label>
+            <input type="text" id="rep_name">
+          </div>
+          <div class="field">
+            <label for="payment_terms">Payment terms</label>
+            <select id="payment_terms">
+              <option value="net30" selected>Net 30</option>
+              <option value="net15">Net 15</option>
+              <option value="net7">Net 7</option>
+              <option value="cod">COD</option>
+              <option value="ewa">EWA</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="rep_email">Rep email</label>
+          <input type="email" id="rep_email">
+        </div>
+      </fieldset>
+
+      <div class="step-nav">
+        <button type="button" class="btn btn-secondary" id="back" disabled>Back</button>
+        <button type="submit" class="btn" id="next">Continue</button>
+      </div>
+    </form>
+  </div>
+</main>
+
+<script src="/js/db.js"></script>
+<script src="/js/onboarding.js"></script>
+</body>
+</html>

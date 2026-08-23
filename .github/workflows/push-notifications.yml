@@ -15,4 +15,4 @@ jobs:
           curl -f -s -X POST \
             -H "Content-Type: application/json" \
             -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.NETLIFY_URL }}/.netlify/functions/push/send"
+            "${{ secrets.NETLIFY_URL }}/api/push/send"

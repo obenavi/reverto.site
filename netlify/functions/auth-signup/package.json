@@ -1,6 +1,7 @@
 {
-  "name": "yield-auth",
+  "name": "auth-signup",
   "version": "1.0.0",
+  "private": true,
   "dependencies": {
     "bcryptjs": "^2.4.3"
   }

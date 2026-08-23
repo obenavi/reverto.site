@@ -1,32 +1,49 @@
 [build]
   publish = "."
   functions = "netlify/functions"
-  command = "npm install --prefix netlify/functions/push/send && npm install --prefix netlify/functions/market/sync"
+  # Install dependencies for every function directory that declares them.
+  command = "for d in netlify/functions/*/; do [ -f \"$d/package.json\" ] && npm install --prefix \"$d\" || true; done"
 
-[[headers]]
-  for = "/*.html"
-  [headers.values]
-    Cache-Control = "no-cache, must-revalidate"
-    X-Content-Type-Options = "nosniff"
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
-    Referrer-Policy = "strict-origin-when-cross-origin"
+[functions]
+  node_bundler = "esbuild"
+  # Files outside the functions directory that functions require()
+  included_files = ["lib/**", "parsers/**"]
 
-[[headers]]
-  for = "/js/*.js"
-  [headers.values]
-    Cache-Control = "no-cache, must-revalidate"
-
-[[headers]]
-  for = "/css/*.css"
-  [headers.values]
-    Cache-Control = "no-cache, must-revalidate"
-
+# ── API routing ───────────────────────────────────────────────────────────────
+# Netlify only discovers functions at the top level of the functions directory
+# (foo.js or foo/index.js), so endpoints are flat directories mapped to nested
+# public paths here.
 [[redirects]]
-  from = "/"
-  to = "/index.html"
+  from = "/api/auth/login"
+  to = "/.netlify/functions/auth-login"
   status = 200
 
+[[redirects]]
+  from = "/api/auth/signup"
+  to = "/.netlify/functions/auth-signup"
+  status = 200
+
+[[redirects]]
+  from = "/api/auth/me"
+  to = "/.netlify/functions/auth-me"
+  status = 200
+
+[[redirects]]
+  from = "/api/business/setup"
+  to = "/.netlify/functions/business-setup"
+  status = 200
+
+[[redirects]]
+  from = "/api/invoices/parse"
+  to = "/.netlify/functions/invoices-parse"
+  status = 200
+
+[[redirects]]
+  from = "/api/market/sync"
+  to = "/.netlify/functions/market-sync"
+  status = 200
+
+# ── Page routing ──────────────────────────────────────────────────────────────
 [[redirects]]
   from = "/app"
   to = "/app.html"
@@ -38,6 +55,35 @@
   status = 200
 
 [[redirects]]
+  from = "/signup"
+  to = "/signup.html"
+  status = 200
+
+[[redirects]]
   from = "/onboarding"
   to = "/onboarding.html"
   status = 200
+
+# ── Headers ───────────────────────────────────────────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"

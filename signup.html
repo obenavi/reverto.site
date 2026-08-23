@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Create your account — Yield</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="auth-page">
+<main class="auth-card card">
+  <a class="logo brand" href="/">Yield</a>
+  <h1>Create your account</h1>
+
+  <div id="error" class="form-error hidden" role="alert"></div>
+
+  <form id="signup-form" novalidate>
+    <div class="field">
+      <label for="business_name">Restaurant name</label>
+      <input type="text" id="business_name" name="business_name" autocomplete="organization" required>
+    </div>
+    <div class="field">
+      <label for="name">Your name</label>
+      <input type="text" id="name" name="name" autocomplete="name" required>
+    </div>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" autocomplete="email" required>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" autocomplete="new-password"
+             minlength="8" required aria-describedby="pw-hint">
+      <p class="hint" id="pw-hint">At least 8 characters.</p>
+    </div>
+    <button type="submit" class="btn btn-block btn-lg" id="submit">Create account</button>
+  </form>
+
+  <p class="auth-alt">
+    Already have an account? <a href="/login">Log in</a><br>
+    <span class="small">By signing up you agree to our
+      <a href="/terms.html">Terms</a> and <a href="/privacy.html">Privacy Policy</a>.</span>
+  </p>
+</main>
+
+<script src="/js/db.js"></script>
+<script src="/js/auth.js"></script>
+</body>
+</html>

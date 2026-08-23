@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard — Yield</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="app-body">
+<a class="skip-link" href="#main">Skip to main content</a>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="logo" href="/app">Yield</a>
+    <span class="biz-name" id="biz-name"></span>
+    <span class="spacer"></span>
+    <span class="plan-badge" id="plan-badge">Free</span>
+    <button type="button" class="btn btn-ghost" id="logout">Log out</button>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Sections">
+  <div class="tabs-inner" role="tablist">
+    <button class="tab" role="tab" id="tab-dashboard" aria-controls="panel-dashboard" aria-selected="true" data-panel="dashboard">Dashboard</button>
+    <button class="tab" role="tab" id="tab-invoices"  aria-controls="panel-invoices"  aria-selected="false" data-panel="invoices">Invoices</button>
+    <button class="tab" role="tab" id="tab-market"    aria-controls="panel-market"    aria-selected="false" data-panel="market">Market prices</button>
+    <button class="tab" role="tab" id="tab-settings"  aria-controls="panel-settings"  aria-selected="false" data-panel="settings">Settings</button>
+  </div>
+</nav>
+
+<main class="app-main" id="main">
+
+  <!-- Dashboard -->
+  <section id="panel-dashboard" role="tabpanel" aria-labelledby="tab-dashboard" tabindex="-1">
+    <div class="panel-head">
+      <h2>Dashboard</h2>
+      <span class="muted small" id="today"></span>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="label">Food cost %</div>
+        <div class="value" id="stat-fc">—</div>
+        <div class="sub">Needs invoices + Z reports</div>
+      </div>
+      <div class="stat">
+        <div class="label">Invoices this month</div>
+        <div class="value" id="stat-invoices">0</div>
+        <div class="sub">Parsed and verified</div>
+      </div>
+      <div class="stat">
+        <div class="label">Spend this month</div>
+        <div class="value" id="stat-spend">$0.00</div>
+        <div class="sub">Across all suppliers</div>
+      </div>
+      <div class="stat">
+        <div class="label">Items above market</div>
+        <div class="value" id="stat-above">—</div>
+        <div class="sub">Vs. USDA reference price</div>
+      </div>
+    </div>
+
+    <div class="empty">
+      <h3>No data yet</h3>
+      <p>Upload your first Sysco invoice and Yield will compute true cost per pound for every
+         line, spread the fuel surcharge across items, and compare each one to the USDA
+         market price.</p>
+      <button type="button" class="btn" data-goto="invoices">Go to invoices</button>
+    </div>
+  </section>
+
+  <!-- Invoices -->
+  <section id="panel-invoices" role="tabpanel" aria-labelledby="tab-invoices" tabindex="-1" class="hidden">
+    <div class="panel-head">
+      <h2>Invoices</h2>
+      <button type="button" class="btn" id="upload-btn">Upload invoice</button>
+    </div>
+
+    <div class="empty">
+      <h3>No invoices yet</h3>
+      <p>PDF or photo — Yield reads Sysco invoices line by line, including catch-weight items
+         billed by actual weight.</p>
+      <p class="small muted">Upload is not wired up yet: the parser and its endpoint exist, but
+         <code>invoices/upload</code> and the Supabase Storage bucket are still to be built.</p>
+    </div>
+  </section>
+
+  <!-- Market prices -->
+  <section id="panel-market" role="tabpanel" aria-labelledby="tab-market" tabindex="-1" class="hidden">
+    <div class="panel-head">
+      <h2>Market prices</h2>
+      <span class="muted small">USDA AMS, synced each weekday morning</span>
+    </div>
+
+    <div class="empty">
+      <h3>No market data loaded</h3>
+      <p>The daily USDA sync job runs against your Supabase project. Once it has run and you
+         have parsed invoices, your purchase price appears here next to the wholesale
+         reference price.</p>
+      <p class="small muted">Needs the <code>market/prices</code> read endpoint, which is next up.</p>
+    </div>
+  </section>
+
+  <!-- Settings -->
+  <section id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" tabindex="-1" class="hidden">
+    <div class="panel-head"><h2>Settings</h2></div>
+
+    <div class="card" style="max-width:620px">
+      <h3>Account</h3>
+      <table class="data" style="margin-top:.5rem">
+        <tbody>
+          <tr><th scope="row">Name</th>       <td id="set-name">—</td></tr>
+          <tr><th scope="row">Email</th>      <td id="set-email">—</td></tr>
+          <tr><th scope="row">Role</th>       <td id="set-role">—</td></tr>
+          <tr><th scope="row">Restaurant</th> <td id="set-biz">—</td></tr>
+          <tr><th scope="row">Location</th>   <td id="set-loc">—</td></tr>
+          <tr><th scope="row">Plan</th>       <td id="set-plan">—</td></tr>
+        </tbody>
+      </table>
+      <p class="small muted" style="margin-top:1rem">
+        Need to change something? Re-run <a href="/onboarding">setup</a>.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<script src="/js/db.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

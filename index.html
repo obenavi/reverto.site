@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yield — Know what your food actually costs</title>
+<meta name="description" content="Yield turns your Sysco invoices into true cost per pound, compares it to USDA market prices, and tracks your food cost percentage daily.">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .nav { border-bottom: 1px solid var(--line); }
+  .nav-inner { max-width: var(--maxw); margin: 0 auto; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; }
+  .nav .spacer { flex: 1; }
+  .hero { padding: 4.5rem 0 3.5rem; }
+  .hero p.lede { font-size: 1.2rem; color: var(--ink-2); max-width: 40rem; }
+  .hero .cta { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: 1.75rem; }
+  .strip { background: var(--bg-2); border-block: 1px solid var(--line); padding: 3.5rem 0; }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
+  .feature h3 { margin-bottom: .35rem; }
+  .feature p { color: var(--ink-2); margin: 0; }
+  .price-card { max-width: 420px; margin: 0 auto; text-align: center; }
+  .price { font-size: 2.75rem; font-weight: 700; letter-spacing: -.03em; }
+  .price span { font-size: 1rem; font-weight: 500; color: var(--ink-3); }
+  .plan-list { list-style: none; padding: 0; margin: 1.25rem 0; text-align: left; }
+  .plan-list li { padding: .4rem 0 .4rem 1.6rem; position: relative; }
+  .plan-list li::before { content: "✓"; position: absolute; left: 0; color: var(--good); font-weight: 700; }
+  footer { padding: 2.5rem 0; border-top: 1px solid var(--line); color: var(--ink-3); font-size: .9rem; }
+  footer nav { display: flex; gap: 1.25rem; flex-wrap: wrap; margin-top: .5rem; }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="logo" href="/">Yield</a>
+    <span class="spacer"></span>
+    <a class="btn btn-ghost" href="/login">Log in</a>
+    <a class="btn" href="/signup">Start free</a>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero wrap">
+    <h1>Know what your food actually costs.</h1>
+    <p class="lede">
+      Your distributor prices by the case. Your margin lives in the pound. Yield reads your
+      Sysco invoices, computes true cost per pound and per ounce, and shows it next to the
+      USDA market price — so you can see what you are overpaying for before the month closes.
+    </p>
+    <div class="cta">
+      <a class="btn btn-lg" href="/signup">Start free — no card</a>
+      <a class="btn btn-lg btn-secondary" href="#how">See how it works</a>
+    </div>
+  </section>
+
+  <section class="strip" id="how">
+    <div class="wrap">
+      <h2>Three numbers your invoice hides</h2>
+      <div class="grid-3" style="margin-top:2rem">
+        <div class="feature">
+          <h3>True cost per pound</h3>
+          <p>A 4/5lb case at $87.40 is $4.37/lb. Yield does that for every line, including
+             catch-weight items billed by actual weight and split-case fees.</p>
+        </div>
+        <div class="feature">
+          <h3>Fuel surcharge, attributed</h3>
+          <p>Surcharges land as one lump line at the bottom. Yield spreads them across the
+             items proportionally, so the cost you see is the cost you paid.</p>
+        </div>
+        <div class="feature">
+          <h3>Market comparison</h3>
+          <p>Daily USDA wholesale prices sit beside your purchase price. Green means you are
+             at or below market. Red means it's time to call your rep.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap" style="padding:3.5rem 0">
+    <h2 class="center">Pricing</h2>
+    <div class="card price-card" style="margin-top:1.75rem">
+      <div class="price">$49<span>/month</span></div>
+      <p class="muted small">14-day free trial. Cancel anytime.</p>
+      <ul class="plan-list">
+        <li>Unlimited invoice uploads and parsing</li>
+        <li>True cost per pound, ounce, and each</li>
+        <li>Daily USDA market price comparison</li>
+        <li>Food cost % from your Z reports</li>
+        <li>Multi-location dashboard</li>
+      </ul>
+      <a class="btn btn-lg btn-block" href="/signup">Start free trial</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>© <span id="year">2026</span> Yield. Built for independent restaurant operators.</div>
+    <nav aria-label="Footer">
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+      <a href="/accessibility.html">Accessibility</a>
+      <a href="/login">Log in</a>
+    </nav>
+  </div>
+</footer>
+
+<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>

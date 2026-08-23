@@ -1,6 +1,6 @@
 // Core auth, API, and utility helpers
 
-const API = '/.netlify/functions';
+const API = '/api';
 
 // ── Storage (sessionStorage primary, localStorage fallback) ──────────────────
 function _store(key, val) {
@@ -15,6 +15,8 @@ function _del(key) {
   try { localStorage.removeItem(key); } catch (_) {}
 }
 
+const KEYS = ['yd_token', 'yd_user_id', 'yd_business_id', 'yd_role', 'yd_name', 'yd_business_name', 'yd_plan', 'yd_onboarded'];
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 const Auth = {
   token: () => _get('yd_token'),
@@ -22,6 +24,9 @@ const Auth = {
   businessId: () => _get('yd_business_id'),
   role: () => _get('yd_role'),
   name: () => _get('yd_name'),
+  businessName: () => _get('yd_business_name'),
+  plan: () => _get('yd_plan') || 'free',
+  isOnboarded: () => _get('yd_onboarded') === 'true',
 
   isOwner: () => Auth.role() === 'owner',
   isManager: () => ['owner', 'manager'].includes(Auth.role()),
@@ -32,20 +37,34 @@ const Auth = {
     _store('yd_business_id', data.business_id);
     _store('yd_role', data.role);
     _store('yd_name', data.name || '');
+    _store('yd_business_name', data.business_name || '');
+    _store('yd_plan', data.plan || 'free');
+    _store('yd_onboarded', String(!!data.onboarded));
   },
 
-  clear() {
-    ['yd_token', 'yd_user_id', 'yd_business_id', 'yd_role', 'yd_name'].forEach(_del);
-  },
+  setOnboarded(v) { _store('yd_onboarded', String(!!v)); },
+
+  clear() { KEYS.forEach(_del); },
 
   isLoggedIn: () => !!Auth.token(),
 
-  requireAuth() {
+  // Sends the user where they belong: login if signed out, onboarding if setup
+  // is incomplete. Returns false when a redirect was issued.
+  requireAuth({ allowUnonboarded = false } = {}) {
     if (!Auth.isLoggedIn()) {
-      window.location.href = '/login.html';
+      window.location.href = '/login';
+      return false;
+    }
+    if (!allowUnonboarded && !Auth.isOnboarded()) {
+      window.location.href = '/onboarding';
       return false;
     }
     return true;
+  },
+
+  logout() {
+    Auth.clear();
+    window.location.href = '/login';
   }
 };
 
@@ -55,18 +74,27 @@ async function apiFetch(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   if (token) headers['Authorization'] = 'Bearer ' + token;
 
-  const res = await fetch(API + path, { ...options, headers });
+  let res;
+  try {
+    res = await fetch(API + path, { ...options, headers });
+  } catch (_) {
+    return { ok: false, status: 0, data: { error: 'Network error — check your connection' } };
+  }
 
-  if (res.status === 401) {
+  if (res.status === 401 && Auth.isLoggedIn()) {
     Auth.clear();
-    window.location.href = '/login.html';
-    return null;
+    window.location.href = '/login';
+    return { ok: false, status: 401, data: { error: 'Session expired' } };
   }
 
   const text = await res.text();
-  try { return { ok: res.ok, status: res.status, data: JSON.parse(text) }; }
-  catch (_) { return { ok: res.ok, status: res.status, data: text }; }
+  let data;
+  try { data = text ? JSON.parse(text) : null; } catch (_) { data = text; }
+  return { ok: res.ok, status: res.status, data };
 }
+
+const apiGet  = (path) => apiFetch(path);
+const apiPost = (path, body) => apiFetch(path, { method: 'POST', body: JSON.stringify(body) });
 
 // ── Toast notifications ──────────────────────────────────────────────────────
 function showToast(msg, type = 'info', duration = 3500) {
@@ -76,6 +104,7 @@ function showToast(msg, type = 'info', duration = 3500) {
   const t = document.createElement('div');
   t.id = 'yd-toast';
   t.className = `yd-toast yd-toast-${type}`;
+  t.setAttribute('role', type === 'error' ? 'alert' : 'status');
   t.textContent = msg;
   document.body.appendChild(t);
 
@@ -84,36 +113,37 @@ function showToast(msg, type = 'info', duration = 3500) {
 }
 
 // ── Formatting helpers ───────────────────────────────────────────────────────
-function formatUSD(n) {
-  return '$' + (+n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+function formatUSD(n, decimals = 2) {
+  if (n === null || n === undefined || n === '') return '—';
+  return '$' + (+n).toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
 function formatPct(n) {
+  if (n === null || n === undefined || n === '') return '—';
   return (+n).toFixed(1) + '%';
 }
 
 function formatDate(d) {
   if (!d) return '—';
-  const dt = new Date(d + 'T12:00:00');
+  const dt = new Date(String(d).slice(0, 10) + 'T12:00:00');
+  if (isNaN(dt)) return '—';
   return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-// ── Plan check ───────────────────────────────────────────────────────────────
+// ── Plan gating ──────────────────────────────────────────────────────────────
 function isPro() {
-  return _get('yd_plan') === 'pro' || _get('yd_plan') === 'enterprise';
+  return ['pro', 'enterprise'].includes(Auth.plan());
 }
 
 function requirePro(featureName) {
-  if (!isPro()) {
-    showUpgradeModal(featureName);
-    return false;
-  }
-  return true;
+  if (isPro()) return true;
+  showUpgradeModal(featureName);
+  return false;
 }
 
 function showUpgradeModal(feature) {
   const m = document.getElementById('upgrade-modal');
-  if (!m) return;
+  if (!m) { showToast(`${feature || 'That feature'} requires the Pro plan.`, 'info'); return; }
   const f = m.querySelector('.upgrade-feature');
   if (f) f.textContent = feature || 'this feature';
   m.classList.remove('hidden');
